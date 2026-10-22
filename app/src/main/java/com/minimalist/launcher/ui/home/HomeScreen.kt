@@ -63,7 +63,7 @@ fun HomeScreen(
             ) { _, amount -> dragged += amount }
         },
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(72.dp))
         Label(
             text = now.format(timeFormat),
             style = Type.clock,
@@ -77,10 +77,10 @@ fun HomeScreen(
         val batteryText = battery?.let { " · ${it.percent}%" + if (it.charging) " charging" else "" }.orEmpty()
         Label(text = now.format(dateFormat) + batteryText, style = Type.small)
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         val intention = state.intention
         if (intention != null) {
-            TextAction(text = intention, onClick = { editingIntention = true }, style = Type.body)
+            TextAction(text = intention, onClick = { editingIntention = true }, style = Type.small.copy(color = Palette.Text))
         } else if (state.loaded) {
             TextAction(
                 text = "What's the one thing you'll do today?",
@@ -102,14 +102,14 @@ fun HomeScreen(
         if (state.loaded && state.favourites.isEmpty()) {
             Label("Long-press an app in search to add it here.", style = Type.small)
         }
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.weight(1.3f))
 
-        TextAction(text = "Search", onClick = onOpenSearch, style = Type.body.copy(color = Palette.Dim), modifier = Modifier.fillMaxWidth())
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextAction(text = "Put away", onClick = onPutAway)
-            TextAction(text = "Urgent message", onClick = onUrgentMessage)
+            TextAction(text = "Put away", onClick = onPutAway, style = Type.small)
+            TextAction(text = "Search", onClick = onOpenSearch, style = Type.small)
+            TextAction(text = "Urgent message", onClick = onUrgentMessage, style = Type.small)
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
     }
 
     if (editingIntention) {

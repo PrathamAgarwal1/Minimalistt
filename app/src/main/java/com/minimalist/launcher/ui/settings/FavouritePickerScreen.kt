@@ -35,7 +35,7 @@ fun FavouritePickerScreen(
     DisposableEffect(Unit) { onDispose { viewModel.setPickerQuery("") } }
 
     Screen {
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(40.dp))
         ScreenTitle("Add a favourite", onBack)
         InputField(
             value = query,

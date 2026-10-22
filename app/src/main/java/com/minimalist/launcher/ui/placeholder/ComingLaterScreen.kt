@@ -14,7 +14,7 @@ import com.minimalist.launcher.ui.theme.Type
 @Composable
 fun ComingLaterScreen(title: String, body: String, onBack: () -> Unit) {
     Screen {
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(40.dp))
         ScreenTitle(title, onBack)
         Label(body, style = Type.body)
     }

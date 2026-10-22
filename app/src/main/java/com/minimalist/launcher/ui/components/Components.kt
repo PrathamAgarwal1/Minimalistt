@@ -91,13 +91,13 @@ fun TextAction(
 @Composable
 fun ScreenTitle(text: String, onBack: () -> Unit) {
     TextAction(text = text, onClick = onBack, style = Type.title, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(12.dp))
 }
 
 @Composable
 fun SectionHeader(text: String) {
-    Spacer(Modifier.height(24.dp))
-    Label(text = text.uppercase(), style = Type.small)
+    Spacer(Modifier.height(32.dp))
+    Label(text = text.uppercase(), style = Type.label)
     Spacer(Modifier.height(4.dp))
 }
 
@@ -136,7 +136,7 @@ fun InputField(
 fun LabelledAction(label: String, action: String, onAction: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Label(label, modifier = Modifier.weight(1f), style = Type.body)
-        TextAction(text = action, onClick = onAction, style = Type.body.copy(color = Palette.Dim), modifier = Modifier.padding(start = 16.dp))
+        TextAction(text = action, onClick = onAction, style = Type.small, modifier = Modifier.padding(start = 16.dp))
     }
 }
 
@@ -157,8 +157,8 @@ fun TextInputDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Palette.Background)
-                .border(1.dp, Palette.Faint)
-                .padding(horizontal = Spacing.gutter, vertical = 16.dp),
+                .border(1.dp, Palette.Line)
+                .padding(horizontal = Spacing.gutter, vertical = 20.dp),
         ) {
             Label(title, style = Type.small)
             InputField(
@@ -174,7 +174,7 @@ fun TextInputDialog(
                 },
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextAction("Cancel", onClick = onDismiss, style = Type.body.copy(color = Palette.Dim))
+                TextAction("Cancel", onClick = onDismiss, style = Type.small)
                 Spacer(Modifier.width(24.dp))
                 TextAction(
                     "Save",
@@ -200,8 +200,8 @@ fun OptionsDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Palette.Background)
-                .border(1.dp, Palette.Faint)
-                .padding(horizontal = Spacing.gutter, vertical = 16.dp),
+                .border(1.dp, Palette.Line)
+                .padding(horizontal = Spacing.gutter, vertical = 20.dp),
         ) {
             Label(title, style = Type.small)
             Spacer(Modifier.height(8.dp))
@@ -215,7 +215,7 @@ fun OptionsDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            TextAction(text = "Cancel", onClick = onDismiss, style = Type.body.copy(color = Palette.Dim), modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Cancel", onClick = onDismiss, style = Type.small, modifier = Modifier.fillMaxWidth())
         }
     }
 }

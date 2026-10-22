@@ -52,7 +52,7 @@ fun SettingsScreen(
     }
 
     Screen {
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(40.dp))
         ScreenTitle("Settings", onBack)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             SectionHeader("Home app")
@@ -68,7 +68,7 @@ fun SettingsScreen(
                     },
                 )
             }
-            TextAction(text = "Open Home app settings", onClick = ::openHomeSettings, style = Type.body.copy(color = Palette.Dim))
+            TextAction(text = "Open Home app settings", onClick = ::openHomeSettings, style = Type.small)
 
             SectionHeader("Favourites ${state.favourites.size}/${FavouriteOrder.MAX_FAVOURITES}")
             Label("Their order changes every day.", style = Type.small)
