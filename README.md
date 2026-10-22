@@ -4,9 +4,16 @@ A minimalist Android home screen with friction-based app blocking, built for one
 (Oppo Reno 14, ColorOS 16, Android 16) and sideloaded. No internet permission: everything
 stays on the device.
 
-Work happens in phases. **Done:** home screen, favourites, search, hidden apps, settings (phase 1);
-blocking with durations, schedules, daily limits, the block screen and urge wave (phase 2).
-Friction, modes, notifications, website blocking, anti-cheat and the setup wizard come next.
+Work happens in phases. **Done:**
+
+1. Home screen, favourites, search, hidden apps, settings
+2. Blocking: durations, schedules, daily limits, block screen, urge wave
+3. Friction (countdown, reason, session length) and wanting vs liking
+4. Put away, morning and night modes
+5. Held notifications, batching, VIPs, urgent WhatsApp and quick reply
+6. Website blocking and the single allowed browser
+
+Next: new-app quarantine and anti-cheat, earned screen time and stats, the setup wizard.
 
 ## Get the APK
 
@@ -57,6 +64,20 @@ Launcher settings → Blocking shows whether the service is on and has buttons f
 Phone, emergency calls, messages, the clock and this launcher can never be blocked. The Play
 Store is never blocked or watched.
 
+## Other permissions
+
+All of them are optional; each feature says what it needs on its settings page.
+
+- **Notification access** (Settings → Notifications and VIPs): holds and saves notifications.
+  Sideloaded, so it may need *Allow restricted settings* first, like the accessibility service.
+- **Post notifications**: for the summaries of held notifications.
+- **Display over other apps** (Settings → Put away, morning and night): the red tint at night.
+- **ColorOS background limits**: Settings → Apps → Minimalist → allow auto-launch and
+  *Allow background activity* in Battery, so the guard service isn't stopped.
+
+While a mode runs, Android Settings stays reachable on purpose until the emergency unlock
+exists (phase 7), so a mode can never lock you out of the phone.
+
 ## Debug tools (debug builds only)
 
 Clear every block, schedule, limit and today's counters:
@@ -71,9 +92,10 @@ If the app isn't running, address it directly:
 adb shell am broadcast -a com.minimalist.launcher.DEBUG_RESET -p com.minimalist.launcher
 ```
 
-**Test mode** (Settings → Blocking → Debug build) shrinks durations for new blocks and limits:
-an hour becomes a second, a day 24 seconds, a month 12 minutes, and daily-limit minutes become
-seconds. Neither exists in release builds.
+**Test mode** (Settings → Blocking → Debug build) shrinks durations: an hour of a new block
+becomes a second (a day 24 seconds, a month 12 minutes); minutes of daily limits, friction
+sessions, Put away and morning mode become seconds; friction countdowns are a fifth as long.
+Neither exists in release builds. The reset also ends Put away and morning mode.
 
 ## Using it
 
@@ -83,7 +105,12 @@ seconds. Neither exists in release builds.
 - Tap the line under the clock to set today's intention.
 - Long-press the clock, or search "launcher settings", to open settings.
 - Settings → Blocking: block an app for hours to months, add schedules (e.g. 22:00–08:00, or
-  class hours on weekdays), and set daily limits on time or opens.
+  class hours on weekdays), set daily limits on time or opens, and slow apps down with friction.
+- **Put away** on the home screen: only essentials work until the time is up.
+- Settings → Put away, morning and night: automatic Put away, morning and night times, habits,
+  and which apps keep working in modes.
+- Settings → Notifications and VIPs: batching times, VIP contacts, urgent messages per session.
+- Settings → Websites and browsers: the one allowed browser and extra blocked sites.
 
 ## Build locally
 
