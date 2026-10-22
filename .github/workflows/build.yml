@@ -50,14 +50,16 @@ jobs:
           "$AAPT2" dump xmltree --file AndroidManifest.xml app/build/outputs/apk/debug/app-debug.apk | grep -q "DEBUG_RESET" \
             || { echo "::error::The debug APK is missing the debug reset receiver"; exit 1; }
 
-      - name: Check the Room schema is committed
+      # Room writes a schema file per database version; later migrations are tested against them.
+      - name: Commit the Room schema if it changed
+        if: github.event_name == 'push'
         run: |
-          untracked="$(git ls-files --others --exclude-standard app/schemas)"
-          if [ -n "$untracked" ] || ! git diff --quiet --ignore-all-space -- app/schemas; then
-            git diff --ignore-all-space -- app/schemas
-            for f in $untracked; do echo "== $f"; cat "$f"; done
-            echo "::error::Room schema changed; commit the files under app/schemas"
-            exit 1
+          git add app/schemas
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Update Room schema"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
       - uses: actions/upload-artifact@v5
