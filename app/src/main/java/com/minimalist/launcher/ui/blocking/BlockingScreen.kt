@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.blocking
 
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -48,8 +49,14 @@ fun BlockingScreen(
         serviceOn = BlockerService.isEnabled(context)
         onPauseOrDispose {}
     }
-    fun open(intent: Intent) {
-        runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    fun open(intent: Intent): Boolean =
+        runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+
+    // Straight to this service's own switch; the full accessibility list if the phone refuses.
+    fun openBlockerSettings() {
+        val details = Intent(Settings.ACTION_ACCESSIBILITY_DETAILS_SETTINGS)
+            .putExtra(Intent.EXTRA_COMPONENT_NAME, ComponentName(context, BlockerService::class.java).flattenToString())
+        if (!open(details)) open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
     Screen {
@@ -60,17 +67,16 @@ fun BlockingScreen(
             if (serviceOn) {
                 Label("On. A blocked app sends you back home.", style = Type.body.copy(color = Palette.Accent))
             } else {
-                Label("Off. Nothing is blocked until it's on.", style = Type.body)
-                TextAction(text = "Turn on in Accessibility settings", onClick = { open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) })
-                Label(
-                    "If Android says “Restricted setting”: open App info, tap the three-dot menu, choose Allow restricted settings, then try again.",
-                    style = Type.small,
-                )
+                Label("Off. Nothing is blocked until it's on. Two steps:", style = Type.body)
+                Spacer(Modifier.height(8.dp))
+                Label("1. On the App info page, tap the three dots at the top right and choose Allow restricted settings. If there are no three dots, skip this step.", style = Type.small)
                 TextAction(
                     text = "Open App info",
                     onClick = { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) },
-                    style = Type.small,
                 )
+                Label("2. Turn on Minimalist blocking, then come back here.", style = Type.small)
+                TextAction(text = "Open Minimalist blocking", onClick = { openBlockerSettings() })
+                Label("If that opens a list instead, look under Downloaded apps or Installed services.", style = Type.small)
             }
             Label("Phone, emergency calls, messages, clock and this launcher can never be blocked.", style = Type.small)
 

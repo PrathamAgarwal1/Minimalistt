@@ -59,10 +59,13 @@ fun SettingsScreen(
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             SectionHeader("Blocking")
             TextAction(
-                text = if (BlockerService.isEnabled(context)) "Blocks, schedules and limits" else "Blocks, schedules and limits (service off)",
+                text = "Blocks, schedules and limits",
                 onClick = onOpenBlocking,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (!BlockerService.isEnabled(context)) {
+                Label("Blocking is off. Open the page above to turn it on.", style = Type.small)
+            }
 
             SectionHeader("Home app")
             if (isHome) {
