@@ -1,5 +1,7 @@
 package com.minimalist.launcher.data.modes
 
+import com.minimalist.launcher.domain.parts.AppParts
+import com.minimalist.launcher.domain.friction.ScrollCheck
 import com.minimalist.launcher.system.TrustedClock
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -44,8 +46,12 @@ data class ModesState(
     val grayscaleByUs: Boolean = false,
     val dayModes: DayModeConfig = DayModeConfig(),
     val frictionBaseSeconds: Int = 5,
+    /** "Still worth it?" after this many unbroken minutes in one app; 0 is off. */
+    val scrollCheckMinutes: Int = ScrollCheck.DEFAULT_MINUTES,
     /** Keys of [com.minimalist.launcher.domain.parts.AppParts] that are blocked, e.g. Reels. */
     val blockedParts: Set<String> = emptySet(),
+    /** View ids taught for each part since the built-in ones, by part key. */
+    val learnedPartIds: Map<String, Set<String>> = emptyMap(),
     /** When the weekly review was last shown. */
     val lastReviewAt: Long? = null,
     /** False until the stored values have been read. */
@@ -92,6 +98,7 @@ class ModesRepository(
         val redTint = booleanPreferencesKey("red_tint")
         val reminderMinutes = intPreferencesKey("reminder_minutes")
         val frictionBase = intPreferencesKey("friction_base_seconds")
+        val scrollCheck = intPreferencesKey("scroll_check_minutes")
         val blockedParts = stringSetPreferencesKey("blocked_parts")
         val lastReviewAt = longPreferencesKey("last_review_at")
         val unplugMinutes = intPreferencesKey("unplug_minutes")
@@ -128,7 +135,9 @@ class ModesRepository(
                 reminderMinutes = prefs[Keys.reminderMinutes] ?: defaults.dayModes.reminderMinutes,
             ),
             frictionBaseSeconds = prefs[Keys.frictionBase] ?: defaults.frictionBaseSeconds,
+            scrollCheckMinutes = prefs[Keys.scrollCheck] ?: defaults.scrollCheckMinutes,
             blockedParts = prefs[Keys.blockedParts] ?: emptySet(),
+            learnedPartIds = AppParts.ALL.mapNotNull { part -> prefs[learnedKey(part.key)]?.let { part.key to it } }.toMap(),
             lastReviewAt = prefs[Keys.lastReviewAt],
             loaded = true,
             unplugMinutes = prefs[Keys.unplugMinutes] ?: defaults.unplugMinutes,
@@ -178,7 +187,16 @@ class ModesRepository(
 
     suspend fun setFrictionBase(seconds: Int) = edit { it[Keys.frictionBase] = seconds }
 
+    suspend fun setScrollCheck(minutes: Int) = edit { it[Keys.scrollCheck] = minutes }
+
     suspend fun setBlockedParts(parts: Set<String>) = edit { it[Keys.blockedParts] = parts }
+
+    /** Adds to what marks a part; never removes, since that would weaken blocking. */
+    suspend fun addLearnedPartIds(partKey: String, ids: Collection<String>) = edit {
+        it[learnedKey(partKey)] = it[learnedKey(partKey)].orEmpty() + ids
+    }
+
+    private fun learnedKey(partKey: String) = stringSetPreferencesKey("learned_part_ids_$partKey")
 
     suspend fun setLastReviewAt(millis: Long) = edit { it[Keys.lastReviewAt] = millis }
 

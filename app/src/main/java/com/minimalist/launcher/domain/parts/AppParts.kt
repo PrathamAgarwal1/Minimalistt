@@ -39,10 +39,19 @@ object AppParts {
 
     val PACKAGES: Set<String> = ALL.map { it.packageName }.toSet()
 
+    /** The ids that mark [part]: the built-in ones plus any taught since (see [PartLearning]). */
+    fun idsFor(part: AppPart, learned: Map<String, Set<String>> = emptyMap()): Set<String> =
+        part.viewIds.toSet() + learned[part.key].orEmpty()
+
     /** The blocked part showing, given which of its view ids are on screen. */
-    fun showing(packageName: String, blocked: Set<String>, visibleIds: Set<String>): AppPart? =
+    fun showing(
+        packageName: String,
+        blocked: Set<String>,
+        visibleIds: Set<String>,
+        learned: Map<String, Set<String>> = emptyMap(),
+    ): AppPart? =
         ALL.firstOrNull { part ->
-            part.packageName == packageName && part.key in blocked && part.viewIds.any { it in visibleIds }
+            part.packageName == packageName && part.key in blocked && idsFor(part, learned).any { it in visibleIds }
         }
 
     /** Unblocking a part weakens protection. */

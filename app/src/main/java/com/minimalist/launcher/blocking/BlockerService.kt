@@ -9,14 +9,17 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
+import android.view.accessibility.AccessibilityNodeInfo
 import com.minimalist.launcher.AppContainer
 import com.minimalist.launcher.MainActivity
 import com.minimalist.launcher.MinimalistApp
 import com.minimalist.launcher.data.blocking.Notice
+import com.minimalist.launcher.data.blocking.PartLesson
 import com.minimalist.launcher.domain.blocking.BlockDecision
 import com.minimalist.launcher.domain.blocking.BlockReason
 import com.minimalist.launcher.data.protection.UnlockTarget
 import com.minimalist.launcher.domain.parts.AppParts
+import com.minimalist.launcher.domain.friction.ScrollCheck
 import com.minimalist.launcher.domain.websites.BrowserBars
 import android.widget.Toast
 import com.minimalist.launcher.system.HomeRole
@@ -43,6 +46,7 @@ class BlockerService : AccessibilityService() {
         data class CheckAddress(val packageName: String) : Event
         data class CheckSettings(val packageName: String) : Event
         data class CheckParts(val packageName: String) : Event
+        data class LessonSnapshot(val packageName: String) : Event
     }
 
     private lateinit var container: AppContainer
@@ -51,7 +55,10 @@ class BlockerService : AccessibilityService() {
     private var addressCheck: Job? = null
     private var settingsCheck: Job? = null
     private var partsCheck: Job? = null
+    private var lessonSnapshot: Job? = null
     private var lastPartBack = 0L
+    /** When the app in front came to the front; the "Still worth it?" count starts here. */
+    private var foregroundSince = 0L
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -112,6 +119,14 @@ class BlockerService : AccessibilityService() {
                 events.trySend(Event.CheckParts(packageName))
             }
         }
+        // Teaching a part of an app: note what's on screen as you move around it.
+        val lesson = container.partLesson.value
+        if (lesson != null && lesson.learned == null && lesson.packageName == packageName && lessonSnapshot?.isActive != true) {
+            lessonSnapshot = scope.launch {
+                delay(PARTS_SETTLE_MILLIS)
+                events.trySend(Event.LessonSnapshot(packageName))
+            }
+        }
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         if (container.protectedApps.isOverlay(packageName)) return
         events.trySend(Event.Foreground(packageName))
@@ -137,6 +152,13 @@ class BlockerService : AccessibilityService() {
                 val packageName = event.packageName
                 if (packageName == usage.currentPackage) return
                 usage.switchTo(packageName)
+                foregroundSince = TrustedClock.nowMillis()
+                // Leaving the app being taught ends the lesson.
+                container.partLesson.value?.let { lesson ->
+                    if (lesson.learned == null && lesson.firstSeenAt != null && packageName != lesson.packageName) {
+                        container.finishPartLesson(lesson)
+                    }
+                }
                 // Back home: any friction session is over, so ask whether it was worth it.
                 if (packageName == this.packageName) endFrictionSessions()
                 if (checker.isProtected(packageName)) return
@@ -169,6 +191,15 @@ class BlockerService : AccessibilityService() {
                 if (session != null && session.endsAtMillis <= TrustedClock.nowMillis()) {
                     container.friction.endSession(packageName)
                     sendHome(Notice.WorthIt(session.logId, packageName, container.labelFor(packageName)))
+                    return
+                }
+                // Unbroken use of one app: ask whether it's still worth it. Friction sessions
+                // have their own end, and essentials are never asked about.
+                val modes = container.modes.state.value
+                if (session == null && packageName != this.packageName && packageName !in modes.essentials &&
+                    ScrollCheck.isDue(foregroundSince, TrustedClock.nowMillis(), modes.scrollCheckMinutes, container.timeScale.value)
+                ) {
+                    sendHome(Notice.StillWorthIt(packageName, container.labelFor(packageName), modes.scrollCheckMinutes))
                 }
             }
             Event.ScreenOff -> usage.switchTo(null)
@@ -183,11 +214,14 @@ class BlockerService : AccessibilityService() {
                 if (usage.currentPackage != event.packageName) return
                 val blocked = container.modes.state.value.blockedParts
                 if (blocked.isEmpty() || container.unlocks.hasPass(UnlockTarget.App(event.packageName))) return
+                // Not while you're showing Quiet the part.
+                if (container.partLesson.value?.let { it.learned == null && it.packageName == event.packageName } == true) return
                 val root = rootInActiveWindow ?: return
                 if (root.packageName?.toString() != event.packageName) return
-                val ids = AppParts.ALL.filter { it.packageName == event.packageName }.flatMap { it.viewIds }
+                val learned = container.modes.state.value.learnedPartIds
+                val ids = AppParts.ALL.filter { it.packageName == event.packageName }.flatMap { AppParts.idsFor(it, learned) }
                 val visible = ids.filter { root.findAccessibilityNodeInfosByViewId(it).isNotEmpty() }.toSet()
-                val part = AppParts.showing(event.packageName, blocked, visible) ?: return
+                val part = AppParts.showing(event.packageName, blocked, visible, learned) ?: return
                 val now = TrustedClock.nowMillis()
                 if (now - lastPartBack > PART_RETRY_MILLIS) {
                     // First a step back, which usually leaves Reels or Shorts and keeps you in the app.
@@ -200,6 +234,21 @@ class BlockerService : AccessibilityService() {
                         Notice.Blocked(event.packageName, app, BlockDecision.Blocked(listOf(BlockReason.Part(part.label, app)))),
                     )
                 }
+            }
+            is Event.LessonSnapshot -> {
+                val lesson = container.partLesson.value
+                    ?.takeIf { it.learned == null && it.packageName == event.packageName } ?: return
+                val root = rootInActiveWindow ?: return
+                if (root.packageName?.toString() != event.packageName) return
+                val ids = viewIds(root).takeIf { it.isNotEmpty() } ?: return
+                val now = TrustedClock.nowMillis()
+                val first = lesson.firstSeenAt ?: now
+                val opening = now - first < PartLesson.OPENING_MILLIS
+                container.partLesson.value = lesson.copy(
+                    firstSeenAt = first,
+                    atOpen = if (opening) lesson.atOpen + ids else lesson.atOpen,
+                    atLeave = ids,
+                )
             }
             is Event.CheckAddress -> {
                 if (usage.currentPackage != event.packageName) return
@@ -215,6 +264,20 @@ class BlockerService : AccessibilityService() {
         ended.maxByOrNull { it.endsAtMillis }?.let {
             container.notice.value = Notice.WorthIt(it.logId, it.packageName, container.labelFor(it.packageName))
         }
+    }
+
+    /** Every view id on screen, read breadth-first and capped. */
+    private fun viewIds(root: AccessibilityNodeInfo, limit: Int = 800): Set<String> {
+        val ids = mutableSetOf<String>()
+        val queue = ArrayDeque<AccessibilityNodeInfo>().apply { add(root) }
+        var seen = 0
+        while (queue.isNotEmpty() && seen < limit) {
+            val node = queue.removeFirst()
+            seen++
+            node.viewIdResourceName?.let(ids::add)
+            for (i in 0 until node.childCount) node.getChild(i)?.let(queue::addLast)
+        }
+        return ids
     }
 
     private suspend fun sendHome(notice: Notice) {

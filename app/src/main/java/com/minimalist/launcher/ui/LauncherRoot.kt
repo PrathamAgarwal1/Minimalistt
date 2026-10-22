@@ -28,9 +28,11 @@ import com.minimalist.launcher.ui.block.BlockScreen
 import com.minimalist.launcher.ui.blocking.BlockDurationScreen
 import com.minimalist.launcher.ui.blocking.BlockingScreen
 import com.minimalist.launcher.ui.blocking.LimitEditScreen
+import com.minimalist.launcher.ui.blocking.PartLessonScreen
 import com.minimalist.launcher.ui.blocking.ScheduleEditScreen
 import com.minimalist.launcher.ui.blocking.WantingLikingScreen
 import com.minimalist.launcher.ui.friction.FrictionScreen
+import com.minimalist.launcher.ui.friction.StillWorthItScreen
 import com.minimalist.launcher.ui.friction.WorthScreen
 import com.minimalist.launcher.ui.home.HomeScreen
 import com.minimalist.launcher.MainActivity
@@ -79,6 +81,7 @@ sealed interface Destination {
     data class ScheduleEdit(val scheduleId: Long?) : Destination { override val parent = Blocking }
     data object FrictionPicker : Destination { override val parent = Blocking }
     data object WantingLiking : Destination { override val parent = Blocking }
+    data class PartLesson(val partKey: String) : Destination { override val parent = Blocking }
     data object Modes : Destination { override val parent = Settings }
     data object StudyHours : Destination { override val parent = Modes }
     data class ModeAppPicker(val role: ModeAppRole) : Destination { override val parent = Modes }
@@ -114,7 +117,8 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
     val modesState by container.modes.state.collectAsStateWithLifecycle()
     val setupDone by container.settings.setupDone.collectAsStateWithLifecycle(true)
 
-    LaunchedEffect(homePresses) { homePresses.collect { destination = Destination.Home } }
+    // While a part of an app is being taught, Home comes back to the lesson to show what was learned.
+    LaunchedEffect(homePresses) { homePresses.collect { if (container.partLesson.value == null) destination = Destination.Home } }
     LaunchedEffect(openRequests) {
         openRequests.collect {
             when (it) {
@@ -146,6 +150,7 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
             )
             is Notice.Friction -> FrictionScreen(current)
             is Notice.WorthIt -> WorthScreen(current)
+            is Notice.StillWorthIt -> StillWorthItScreen(current)
             Notice.SettingsClosed -> SettingsClosedScreen(onClose = { container.notice.value = null })
             null -> Unit
         }
@@ -300,7 +305,9 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onEditLimit = { navigate(Destination.LimitEdit(it)) },
             onAddFriction = { navigate(Destination.FrictionPicker) },
             onOpenWantingLiking = { navigate(Destination.WantingLiking) },
+            onTeachPart = { navigate(Destination.PartLesson(it)) },
         )
+        is Destination.PartLesson -> PartLessonScreen(partKey = screen.partKey, onBack = back)
         Destination.FrictionPicker -> {
             val container = appContainer()
             AppPickerScreen(

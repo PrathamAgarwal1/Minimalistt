@@ -20,7 +20,7 @@ class DebugResetReceiver : BroadcastReceiver() {
             try {
                 container.resetAll()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context.applicationContext, "Minimalist: all blocks cleared", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context.applicationContext, "Quiet: all blocks cleared", Toast.LENGTH_SHORT).show()
                 }
             } finally {
                 pending.finish()

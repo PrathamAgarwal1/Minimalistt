@@ -8,6 +8,7 @@ import com.minimalist.launcher.blocking.BlockerService
 import com.minimalist.launcher.data.settings.StoredFavouriteOrder
 import com.minimalist.launcher.domain.FavouriteOrder
 import com.minimalist.launcher.domain.LaunchableApp
+import com.minimalist.launcher.domain.blocking.LimitLeft
 import com.minimalist.launcher.system.BatteryState
 import com.minimalist.launcher.system.batteryState
 import com.minimalist.launcher.system.minuteTicker
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -89,6 +91,16 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             favourites = arranged.keys.mapNotNull(byKey::get),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
+
+    /** "12m left" beside favourites with a daily limit, refreshed every minute. */
+    val limitHints: StateFlow<Map<String, String>> = combine(state, container.blocking.rules, now, container.timeScale) { home, rules, _, scale ->
+        Triple(home.favourites, rules, scale)
+    }.mapLatest { (favourites, rules, scale) ->
+        favourites.mapNotNull { app ->
+            val limit = rules.limits[app.packageName] ?: return@mapNotNull null
+            LimitLeft.hint(limit, container.usage.usageToday(app.packageName), scale)?.let { app.packageName to it }
+        }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     fun launch(app: LaunchableApp) = container.open(app)
 

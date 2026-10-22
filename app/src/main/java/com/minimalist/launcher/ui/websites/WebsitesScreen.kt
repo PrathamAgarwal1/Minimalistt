@@ -98,7 +98,7 @@ fun WebsitesScreen(onBack: () -> Unit) {
                     if (container.websites.add(input)) domain = "" else error = "That doesn't look like a website."
                 }
             })
-            Label("Needs Minimalist blocking switched on in Accessibility.", style = Type.small)
+            Label("Needs Quiet blocking switched on in Accessibility.", style = Type.small)
             Spacer(Modifier.height(24.dp))
         }
     }

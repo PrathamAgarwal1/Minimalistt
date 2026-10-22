@@ -168,7 +168,7 @@ class GuardService : Service(), SensorEventListener {
                 Notification.Builder(this, SUMMARY_CHANNEL)
                     .setSmallIcon(R.drawable.ic_launcher_foreground)
                     .setContentTitle("Blocking is off")
-                    .setContentText("Minimalist blocking was switched off, so nothing is blocked. Tap to turn it back on.")
+                    .setContentText("Quiet blocking was switched off, so nothing is blocked. Tap to turn it back on.")
                     .setContentIntent(
                         PendingIntent.getActivity(
                             this,
@@ -210,7 +210,7 @@ class GuardService : Service(), SensorEventListener {
     private fun statusNotification(lock: ActiveLock?): Notification =
         Notification.Builder(this, STATUS_CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Minimalist")
+            .setContentTitle("Quiet")
             .setContentText(statusText(lock))
             .setOngoing(true)
             .setShowWhen(false)

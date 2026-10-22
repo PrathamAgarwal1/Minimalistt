@@ -7,13 +7,13 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Device Admin with no policies at all: it only means Android won't uninstall Minimalist
+ * Device Admin with no policies at all: it only means Android won't uninstall Quiet
  * until this is switched off, and the page that switches it off is guarded.
  */
 class AdminReceiver : DeviceAdminReceiver() {
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence =
-        "Minimalist won't be protected from uninstalling."
+        "Quiet won't be protected from uninstalling."
 
     companion object {
         fun component(context: Context) = ComponentName(context, AdminReceiver::class.java)
@@ -26,7 +26,7 @@ class AdminReceiver : DeviceAdminReceiver() {
                 .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component(context))
                 .putExtra(
                     DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                    "Stops Minimalist from being uninstalled on a whim. It asks for no other powers.",
+                    "Stops Quiet from being uninstalled on a whim. It asks for no other powers.",
                 )
     }
 }

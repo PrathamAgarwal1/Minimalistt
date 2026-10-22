@@ -18,6 +18,9 @@ sealed interface Notice {
     /** A Settings page that could switch protection off was closed. */
     data object SettingsClosed : Notice
 
+    /** [minutes] of unbroken use of one app: still worth it? */
+    data class StillWorthIt(val packageName: String, val label: String, val minutes: Int) : Notice
+
     /** A friction session just ended: was it worth it? */
     data class WorthIt(val logId: Long, val packageName: String, val label: String) : Notice
 }

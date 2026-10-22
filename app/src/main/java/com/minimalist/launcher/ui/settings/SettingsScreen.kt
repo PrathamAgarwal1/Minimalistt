@@ -169,7 +169,7 @@ fun SettingsScreen(
             NavRow(title = "Setup and status", summary = "Permissions and ColorOS steps", onClick = onOpenSetup)
 
             Spacer(Modifier.height(32.dp))
-            Label("Minimalist ${BuildConfig.VERSION_NAME}${if (BuildConfig.DEBUG) " · testing build" else ""}", style = Type.small.copy(color = Palette.Faint))
+            Label("Quiet ${BuildConfig.VERSION_NAME}${if (BuildConfig.DEBUG) " · testing build" else ""}", style = Type.small.copy(color = Palette.Faint))
             Spacer(Modifier.height(24.dp))
         }
     }

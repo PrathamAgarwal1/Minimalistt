@@ -31,6 +31,7 @@ sealed interface Change {
     data class RemoveDomain(val domain: String) : Change
     data class SetTestMode(val enabled: Boolean) : Change
     data class SetFrictionBase(val seconds: Int) : Change
+    data class SetScrollCheck(val minutes: Int) : Change
     data class SetEarnRules(val rules: EarnRules) : Change
     data class RemoveEarnedApp(val packageName: String) : Change
     data class SetBlockedParts(val parts: Set<String>) : Change
@@ -78,6 +79,7 @@ object ChangeCodec {
             is Change.RemoveDomain -> put("domain", change.domain)
             is Change.SetTestMode -> put("enabled", change.enabled)
             is Change.SetFrictionBase -> put("seconds", change.seconds)
+            is Change.SetScrollCheck -> put("minutes", change.minutes)
             is Change.SetEarnRules -> {
                 put("stepsPerUnit", change.rules.stepsPerUnit)
                 put("minutesPerSteps", change.rules.minutesPerSteps)
@@ -115,6 +117,7 @@ object ChangeCodec {
             "RemoveDomain" -> Change.RemoveDomain(json.getString("domain"))
             "SetTestMode" -> Change.SetTestMode(json.getBoolean("enabled"))
             "SetFrictionBase" -> Change.SetFrictionBase(json.getInt("seconds"))
+            "SetScrollCheck" -> Change.SetScrollCheck(json.getInt("minutes"))
             "SetEarnRules" -> Change.SetEarnRules(
                 EarnRules(json.getInt("stepsPerUnit"), json.getInt("minutesPerSteps"), json.getInt("focusMinutes"), json.getInt("minutesPerFocus")),
             )

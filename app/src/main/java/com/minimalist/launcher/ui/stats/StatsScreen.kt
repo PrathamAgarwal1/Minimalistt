@@ -150,7 +150,7 @@ fun StatsScreen(onBack: () -> Unit, onOpenWantingLiking: () -> Unit, onOpenWeekl
             TextAction(text = "All of wanting vs liking", onClick = onOpenWantingLiking, style = Type.small)
 
             SectionHeader("Export")
-            Label("Everything Minimalist has recorded, as CSV files in one zip. It stays where you save it.", style = Type.small)
+            Label("Everything Quiet has recorded, as CSV files in one zip. It stays where you save it.", style = Type.small)
             TextAction(text = "Export as CSV", onClick = { saveZip.launch("minimalist-${TrustedClock.today()}.zip") })
             exported?.let { Label(it, style = Type.small.copy(color = Palette.Accent)) }
             Spacer(Modifier.height(24.dp))

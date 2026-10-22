@@ -4,7 +4,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 /**
  * Keeps Android Settings usable for Wi-Fi, sound and the rest, but closes the pages that
- * could switch protection off: Minimalist's own app info, accessibility and notification
+ * could switch protection off: Quiet's own app info, accessibility and notification
  * access, Device Admin, the uninstall prompt, Date & time and Developer options.
  */
 object SettingsGuard {
@@ -22,9 +22,9 @@ object SettingsGuard {
         "com.google.android.packageinstaller",
     )
 
-    private const val APP_NAME = "minimalist"
+    private const val APP_NAME = "quiet"
 
-    /** Words that, next to Minimalist's name, mean the page can stop or remove it. */
+    /** Words that, next to Quiet's name, mean the page can stop or remove it. */
     private val WITH_NAME = listOf(
         "uninstall",
         "force stop",
@@ -32,8 +32,8 @@ object SettingsGuard {
         "clear data",
         "clear storage",
         "storage",
-        "minimalist blocking",
-        "minimalist notifications",
+        "quiet blocking",
+        "quiet notifications",
         "device admin",
     )
 

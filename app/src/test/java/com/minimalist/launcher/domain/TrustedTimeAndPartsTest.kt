@@ -117,3 +117,28 @@ class WeeklyReviewTest {
         assertNull(review.change(0, 300))
     }
 }
+
+class PartLearningTest {
+
+    private val yt = "com.google.android.youtube"
+
+    @Test
+    fun keepsOnlyNewFeedLookingIds() {
+        val atOpen = setOf("$yt:id/home_feed", "$yt:id/toolbar", "$yt:id/reel_old_button")
+        val atLeave = setOf("$yt:id/toolbar", "$yt:id/reel_old_button", "$yt:id/shorts_pager_v2", "$yt:id/like_button", "other.app:id/reel_x")
+        assertEquals(listOf("$yt:id/shorts_pager_v2"), com.minimalist.launcher.domain.parts.PartLearning.candidates(yt, atOpen, atLeave))
+    }
+
+    @Test
+    fun nothingWhenTheScreenDidNotChange() {
+        val same = setOf("$yt:id/reel_watch_player")
+        assertTrue(com.minimalist.launcher.domain.parts.PartLearning.candidates(yt, same, same).isEmpty())
+    }
+
+    @Test
+    fun learnedIdsCountForBlocking() {
+        val learned = mapOf("youtube_shorts" to setOf("$yt:id/shorts_pager_v2"))
+        assertEquals("youtube_shorts", AppParts.showing(yt, setOf("youtube_shorts"), setOf("$yt:id/shorts_pager_v2"), learned)?.key)
+        assertNull(AppParts.showing(yt, setOf("youtube_shorts"), setOf("$yt:id/shorts_pager_v2")))
+    }
+}

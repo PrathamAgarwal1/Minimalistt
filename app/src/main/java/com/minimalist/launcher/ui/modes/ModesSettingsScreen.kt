@@ -262,7 +262,7 @@ fun ModesSettingsScreen(
                 }, style = Type.small)
             }
             Label(
-                "On ColorOS, also allow Minimalist to auto-launch and to run in the background (Settings, Battery), so it isn't stopped.",
+                "On ColorOS, also allow Quiet to auto-launch and to run in the background (Settings, Battery), so it isn't stopped.",
                 style = Type.small,
             )
             Spacer(Modifier.height(24.dp))

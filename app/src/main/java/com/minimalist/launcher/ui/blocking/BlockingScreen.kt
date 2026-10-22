@@ -25,6 +25,10 @@ import com.minimalist.launcher.blocking.BlockerService
 import com.minimalist.launcher.data.protection.Change
 import com.minimalist.launcher.domain.DurationFormat
 import com.minimalist.launcher.domain.parts.AppParts
+import com.minimalist.launcher.domain.friction.ScrollCheck
+import com.minimalist.launcher.ui.components.Choice
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import com.minimalist.launcher.ui.appContainer
 import com.minimalist.launcher.ui.appViewModel
 import com.minimalist.launcher.ui.components.Label
@@ -37,6 +41,7 @@ import com.minimalist.launcher.ui.components.TwoLineRow
 import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Type
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BlockingScreen(
     onBack: () -> Unit,
@@ -46,6 +51,7 @@ fun BlockingScreen(
     onEditLimit: (String) -> Unit,
     onAddFriction: () -> Unit,
     onOpenWantingLiking: () -> Unit,
+    onTeachPart: (String) -> Unit,
     viewModel: BlockingViewModel = appViewModel { BlockingViewModel(it) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -86,8 +92,8 @@ fun BlockingScreen(
                         open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
                     },
                 )
-                Label("2. Turn on Minimalist blocking, then come back here.", style = Type.small)
-                TextAction(text = "Open Minimalist blocking", onClick = {
+                Label("2. Turn on Quiet blocking, then come back here.", style = Type.small)
+                TextAction(text = "Open Quiet blocking", onClick = {
                     container.grantSettingsPass()
                     openBlockerSettings()
                 })
@@ -114,12 +120,13 @@ fun BlockingScreen(
                 val on = part.key in modes.blockedParts
                 TwoLineRow(
                     title = part.label,
-                    subtitle = if (on) "Blocked" else "Allowed",
+                    subtitle = if (on) "Blocked. Tap to re-teach if it stops working" else "Allowed",
                     action = if (on) "Allow" else "Block",
                     onAction = {
                         val parts = if (on) modes.blockedParts - part.key else modes.blockedParts + part.key
                         container.changes.submit(Change.SetBlockedParts(parts))
                     },
+                    onClick = { onTeachPart(part.key) },
                 )
             }
 
@@ -163,6 +170,16 @@ fun BlockingScreen(
             }
             TextAction(text = "Slow down an app", onClick = onAddFriction, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Wanting vs liking, last 7 days", onClick = onOpenWantingLiking, style = Type.small, modifier = Modifier.fillMaxWidth())
+
+            SectionHeader("Still worth it?")
+            Label("After this long in one app without a break, Quiet asks whether it's still worth it. Essentials are never asked about.", style = Type.small)
+            FlowRow {
+                ScrollCheck.OPTIONS.forEach { minutes ->
+                    Choice(if (minutes == 0) "Off" else "$minutes min", selected = modes.scrollCheckMinutes == minutes, onClick = {
+                        container.changes.submit(Change.SetScrollCheck(minutes))
+                    })
+                }
+            }
 
             if (BuildConfig.DEBUG) {
                 SectionHeader("Debug build")

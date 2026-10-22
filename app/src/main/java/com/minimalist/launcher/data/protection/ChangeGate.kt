@@ -1,5 +1,6 @@
 package com.minimalist.launcher.data.protection
 
+import com.minimalist.launcher.domain.friction.ScrollCheck
 import com.minimalist.launcher.system.TrustedClock
 import com.minimalist.launcher.AppContainer
 import com.minimalist.launcher.data.db.LetterEntity
@@ -104,6 +105,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.RemoveDomain -> change.domain in container.websites.customDomains.value
             is Change.SetTestMode -> Protection.testModeWeakens(change.enabled)
             is Change.SetFrictionBase -> Protection.frictionBaseWeakens(modes.frictionBaseSeconds, change.seconds)
+            is Change.SetScrollCheck -> ScrollCheck.weakens(modes.scrollCheckMinutes, change.minutes)
             is Change.SetEarnRules -> Earning.rulesWeaken(container.earn.state.value.rules, change.rules)
             is Change.RemoveEarnedApp -> change.packageName in container.earn.state.value.apps
             is Change.SetBlockedParts -> AppParts.weakens(modes.blockedParts, change.parts)
@@ -133,6 +135,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.RemoveDomain -> container.websites.remove(change.domain)
             is Change.SetTestMode -> container.settings.setTestMode(change.enabled)
             is Change.SetFrictionBase -> modes.setFrictionBase(change.seconds)
+            is Change.SetScrollCheck -> modes.setScrollCheck(change.minutes)
             is Change.SetEarnRules -> container.earn.setRules(change.rules)
             is Change.RemoveEarnedApp -> container.earn.removeApp(change.packageName)
             is Change.SetBlockedParts -> modes.setBlockedParts(change.parts)
@@ -171,6 +174,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.RemoveDomain -> "Unblock ${change.domain}"
             is Change.SetTestMode -> "Turn on test mode"
             is Change.SetFrictionBase -> "Start friction countdowns at ${change.seconds} s"
+            is Change.SetScrollCheck -> if (change.minutes == 0) "Stop asking \"Still worth it?\"" else "Ask \"Still worth it?\" after ${change.minutes} minutes"
             is Change.SetEarnRules -> "Make earning screen time easier"
             is Change.RemoveEarnedApp -> "Let ${label(change.packageName)} open without earned time"
             is Change.SetBlockedParts -> "Unblock " + AppParts.ALL

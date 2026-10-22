@@ -103,10 +103,27 @@ class FrictionRepository(context: Context, database: AppDatabase, scope: Corouti
         )
     }
 
+    /** An answer to "Still worth it?" after a long stretch in one app. */
+    suspend fun recordScrollCheck(packageName: String, worth: Int?, minutes: Int) {
+        val now = TrustedClock.nowMillis()
+        dao.insertLog(
+            FrictionLogEntity(
+                packageName = packageName,
+                startedAt = now,
+                urge = null,
+                reason = null,
+                outcome = CHECKED,
+                sessionMinutes = minutes,
+                worth = worth?.coerceIn(1, 5),
+                endedAt = now,
+            ),
+        )
+    }
+
     suspend fun rateWorth(logId: Long, worth: Int) = dao.setWorth(logId, worth.coerceIn(1, 5))
 
     fun pullsSince(sinceMillis: Long): Flow<List<RatedPull>> = dao.observeSince(sinceMillis).map { log ->
-        log.map { RatedPull(it.packageName, it.urge, it.worth, opened = it.outcome == OPENED) }
+        log.map { RatedPull(it.packageName, it.urge, it.worth, opened = it.outcome != RESISTED) }
     }
 
     fun resistedSince(sinceMillis: Long): Flow<Int> = dao.observeResistedSince(sinceMillis)
@@ -120,6 +137,8 @@ class FrictionRepository(context: Context, database: AppDatabase, scope: Corouti
     companion object {
         const val OPENED = "opened"
         const val RESISTED = "resisted"
+        /** A "Still worth it?" answer: time spent in an app, rated. */
+        const val CHECKED = "checked"
 
         fun startOfToday(): Long = TrustedClock.today().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 

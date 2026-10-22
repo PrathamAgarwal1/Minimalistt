@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A single thin horizontal line: the whole design in one mark. -->
+<!-- A thin Q: a ring and a short tail, inside the adaptive icon's safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#FFEDEDED"
-        android:pathData="M38,52.5h32v3h-32z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#FFEDEDED"
+        android:strokeWidth="2.2"
+        android:pathData="M54,37a15,15 0,1 1,0 30a15,15 0,1 1,0 -30z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFEDEDED"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:pathData="M60.5,59.5L69,68" />
 </vector>

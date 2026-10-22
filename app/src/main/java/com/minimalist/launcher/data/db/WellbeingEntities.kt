@@ -20,7 +20,7 @@ data class FrictionLogEntity(
     /** 1–5: how strong the urge was. */
     @ColumnInfo(name = "urge") val urge: Int?,
     @ColumnInfo(name = "reason") val reason: String?,
-    /** "opened" or "resisted". */
+    /** "opened", "resisted" or "checked" (a "Still worth it?" answer). */
     @ColumnInfo(name = "outcome") val outcome: String,
     @ColumnInfo(name = "session_minutes") val sessionMinutes: Int?,
     /** 1–5: whether it was worth it, asked on leaving. */

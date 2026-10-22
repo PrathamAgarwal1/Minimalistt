@@ -87,7 +87,7 @@ fun SetupScreen(onBack: () -> Unit, onFinish: (() -> Unit)? = null) {
     val steps = listOf(
         Step(
             title = "Home app",
-            why = "Minimalist replaces your home screen.",
+            why = "Quiet replaces your home screen.",
             done = HomeRole.isDefaultHome(context),
             action = "Set as Home app",
             onFix = {
@@ -144,7 +144,7 @@ fun SetupScreen(onBack: () -> Unit, onFinish: (() -> Unit)? = null) {
         ),
         Step(
             title = "Battery: allow background activity",
-            why = "ColorOS stops apps it thinks are idle. This keeps Minimalist running.",
+            why = "ColorOS stops apps it thinks are idle. This keeps Quiet running.",
             done = context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName),
             action = "Allow",
             onFix = {
@@ -155,17 +155,17 @@ fun SetupScreen(onBack: () -> Unit, onFinish: (() -> Unit)? = null) {
         ),
         Step(
             title = "Auto-launch",
-            why = "Lets ColorOS start Minimalist after a restart.",
+            why = "Lets ColorOS start Quiet after a restart.",
             done = null,
             action = "Open",
             onFix = { if (!openAutoLaunch(::open)) appInfo() },
-            note = "Find Minimalist and switch it on.",
+            note = "Find Quiet and switch it on.",
         ),
         Step(
             title = "Lock in recent apps",
-            why = "Stops the recent apps screen from clearing Minimalist.",
+            why = "Stops the recent apps screen from clearing Quiet.",
             done = null,
-            note = "Open recent apps, tap the three dots on Minimalist (or hold it), and choose Lock.",
+            note = "Open recent apps, tap the three dots on Quiet (or hold it), and choose Lock.",
         ),
         Step(
             title = "Display over other apps",
@@ -183,7 +183,7 @@ fun SetupScreen(onBack: () -> Unit, onFinish: (() -> Unit)? = null) {
         ),
         Step(
             title = "Uninstall protection",
-            why = "Device Admin, with no other powers, so Minimalist can't be removed on a whim.",
+            why = "Device Admin, with no other powers, so Quiet can't be removed on a whim.",
             done = AdminReceiver.isActive(context),
             action = "Turn on",
             onFix = { open(AdminReceiver.requestIntent(context)) },
@@ -209,7 +209,7 @@ fun SetupScreen(onBack: () -> Unit, onFinish: (() -> Unit)? = null) {
         if (onFinish == null) {
             ScreenTitle("Setup and status", onBack)
         } else {
-            Label("Set up Minimalist", style = Type.title)
+            Label("Set up Quiet", style = Type.title)
             Spacer(Modifier.height(4.dp))
         }
         Label("$ready of $known working. Everything is optional; each part says what it's for.", style = Type.small)

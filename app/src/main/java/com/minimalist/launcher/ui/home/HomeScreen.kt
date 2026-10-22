@@ -6,11 +6,14 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +33,7 @@ import com.minimalist.launcher.ui.components.OptionsDialog
 import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.TextAction
 import com.minimalist.launcher.ui.theme.Palette
+import com.minimalist.launcher.ui.theme.Spacing
 import com.minimalist.launcher.ui.theme.Type
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -52,6 +56,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
     val glance by viewModel.glance.collectAsStateWithLifecycle()
+    val limitHints by viewModel.limitHints.collectAsStateWithLifecycle()
     val look by viewModel.appearance.collectAsStateWithLifecycle()
     val horizontal = if (look.centred) Alignment.CenterHorizontally else Alignment.Start
     val itemAlignment = if (look.centred) Alignment.Center else Alignment.CenterStart
@@ -100,14 +105,21 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(48.dp))
             state.favourites.forEach { app ->
-                TextAction(
-                    text = app.label,
-                    onClick = { viewModel.launch(app) },
-                    onLongClick = { optionsFor = app },
-                    style = Type.item,
-                    alignment = itemAlignment,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Spacing.minTap)
+                        .combinedClickable(onClick = { viewModel.launch(app) }, onLongClick = { optionsFor = app }),
+                    contentAlignment = itemAlignment,
+                ) {
+                    Row {
+                        Label(app.label, style = Type.item, modifier = Modifier.alignByBaseline())
+                        limitHints[app.packageName]?.let { hint ->
+                            Spacer(Modifier.width(10.dp))
+                            Label(hint, style = Type.small, modifier = Modifier.alignByBaseline())
+                        }
+                    }
+                }
             }
             if (state.loaded && state.favourites.isEmpty()) {
                 Label("Long-press an app in search to add it here.", style = Type.small.copy(color = Palette.Faint))
@@ -125,7 +137,7 @@ fun HomeScreen(
 
     if (quickMenu) {
         OptionsDialog(
-            title = "Minimalist",
+            title = "Quiet",
             options = listOf(
                 "Block an app" to onBlockApp,
                 "Put away" to onPutAway,

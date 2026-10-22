@@ -145,7 +145,7 @@ fun ProtectionScreen(onBack: () -> Unit, onOpenPending: () -> Unit, onOpenLetter
 
             SectionHeader("Uninstall protection")
             if (admin) {
-                Label("On. Minimalist can't be uninstalled until this is switched off, and that page is closed while protection is on.", style = Type.body.copy(color = Palette.Accent))
+                Label("On. Quiet can't be uninstalled until this is switched off, and that page is closed while protection is on.", style = Type.body.copy(color = Palette.Accent))
             } else {
                 Label("Off. Turning it on uses Device Admin with no other powers.", style = Type.body)
                 TextAction(text = "Turn on", onClick = {
@@ -156,7 +156,7 @@ fun ProtectionScreen(onBack: () -> Unit, onOpenPending: () -> Unit, onOpenLetter
 
             SectionHeader("Android Settings")
             Label(
-                "Wi-Fi, sound and the rest stay open. While anything is protected, these pages close: Minimalist's app info, " +
+                "Wi-Fi, sound and the rest stay open. While anything is protected, these pages close: Quiet's app info, " +
                     "accessibility and notification access, Device Admin, uninstalling, Date & time and Developer options. " +
                     "During modes and challenges all of Settings is closed.",
                 style = Type.small,

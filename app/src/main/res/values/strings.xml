@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Minimalist</string>
-    <string name="blocker_service_label">Minimalist blocking</string>
+    <string name="app_name">Quiet</string>
+    <string name="blocker_service_label">Quiet blocking</string>
     <string name="blocker_service_description">Notices which app is open, and reads browser address bars, so blocked apps and websites return you to the home screen. Also counts screen time for daily limits. Nothing leaves your phone.</string>
-    <string name="notification_guard_label">Minimalist notifications</string>
+    <string name="notification_guard_label">Quiet notifications</string>
 </resources>

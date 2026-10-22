@@ -1,4 +1,4 @@
-# Minimalist
+# Quiet
 
 A minimalist Android home screen with strong, friction-based app and website blocking, built
 for ColorOS 16 on Android 16 and sideloaded. No internet permission: everything stays on the
@@ -37,7 +37,7 @@ other and over older builds, keeping your data.
 
 1. Open the APK from the download notification or Files, and allow installs from that app.
 2. If ColorOS warns about an unknown app, choose **Install anyway**.
-3. Open **Minimalist**. The setup screen walks through every permission.
+3. Open **Quiet**. The setup screen walks through every permission.
 
 ### "This app can request access to sensitive data…"
 
@@ -46,7 +46,7 @@ they come from a browser, chat app or file manager. The dialog has no install bu
 
 - **Pause Play Protect:** Play Store → profile picture → Play Protect → gear icon → turn off
   *Scan apps with Play Protect*, install the APK, then turn it back on. If Play Protect later
-  offers to remove Minimalist, keep it. Repeat for each update.
+  offers to remove Quiet, keep it. Repeat for each update.
 - **Use adb (Play Protect stays on):** enable Developer options (Settings → About device →
   Version → tap Build number 7 times), turn on USB debugging, then run
   `adb install -r minimalist.apk`. `-r` updates in place and keeps your data. Apps installed this
@@ -56,10 +56,10 @@ they come from a browser, chat app or file manager. The dialog has no install bu
 
 Sideloaded apps can't switch on accessibility or notification access until you allow it:
 
-1. Try to switch on **Minimalist blocking** in Accessibility once and accept the refusal.
-2. Settings → Apps → Minimalist (or search "Minimalist") → three-dot menu (top right) →
+1. Try to switch on **Quiet blocking** in Accessibility once and accept the refusal.
+2. Settings → Apps → Quiet (or search "Quiet") → three-dot menu (top right) →
    **Allow restricted settings** → confirm.
-3. Switch on **Minimalist blocking** (Accessibility) and **Minimalist notifications**
+3. Switch on **Quiet blocking** (Accessibility) and **Quiet notifications**
    (Notification access).
 
 ### One-time adb command for grayscale
@@ -75,18 +75,19 @@ Without it everything else works; the screen just stays in colour.
 ### ColorOS background limits
 
 Settings → Setup and status has buttons for each: allow **auto-launch**, set battery to
-**Allow background activity**, **lock Minimalist in recent apps** (open recents, three dots on
-Minimalist, Lock) and make it the **default Home app** (Settings → Apps → Default apps → Home app).
+**Allow background activity**, **lock Quiet in recent apps** (open recents, three dots on
+Quiet, Lock) and make it the **default Home app** (Settings → Apps → Default apps → Home app).
 
 ## Using it
 
 - **Home:** time, date and a quiet line (screen time, next alarm, battery: your choice), up to 6
-  text-only favourites that change places every day, and Put away, Search and
-  Urgent message. There is no app drawer: swipe up or tap Search and type.
+  text-only favourites that change places every day (an app with a daily limit shows what's
+  left, e.g. "12m left"), and Put away, Search and Urgent message. There is no app drawer: swipe
+  up or tap Search and type.
 - **Long-press** an app on the home screen or in search to block it, add it to favourites, hide
-  it, or open app info. Long-press
-  the clock for a quick menu: block an app, Put away, Stats, Settings, Setup and status.
-- **Search** finds Minimalist's own pages too (in the accent colour): type "block", "stats",
+  it, or open app info. Long-press the clock for a quick menu: block an app, Put away, Stats,
+  Settings, Setup and status.
+- **Search** finds Quiet's own pages too (in the accent colour): type "block", "stats",
   "weekly", "night", "emergency" and so on.
 - **Settings** is grouped into Focus (blocking, websites, earned time), Modes (Put away, night,
   notifications), You (stats, weekly review, emergency and letters) and Phone (Home screen,
@@ -98,7 +99,14 @@ Minimalist, Lock) and make it the **default Home app** (Settings → Apps → De
   launcher and the Play Store can never be blocked.
 - **Parts of apps** (Settings → Blocking): block Instagram Reels and YouTube Shorts and keep the
   rest of each app. Opening one steps back with a short note; going straight back in within a few
-  seconds sends you home. Unblocking a part waits out the cooldown.
+  seconds sends you home. Unblocking a part waits out the cooldown. If an app update breaks it,
+  tap the part to teach Quiet again: the app opens, you go to Reels or Shorts and press Home, and
+  Quiet keeps the screen names that only appeared there (only ones that look like reels, clips or
+  shorts, so it can't block an ordinary screen).
+- **Still worth it?** (Settings → Blocking): after 20 minutes in one app without a break (10, 30,
+  45 or off), Quiet asks whether it's still worth it. Rate it and stop, or go back in for another
+  stretch. Answers show up in wanting vs liking. Essentials are never asked about; asking less
+  often or switching it off waits out the cooldown.
 - **If blocking gets switched off** (ColorOS sometimes does this), the home screen says so in the
   accent colour and a notification appears; both lead to Setup and status to turn it back on.
 - **Websites** (Settings → Websites and browsers): a blocked app's site is blocked with it in
@@ -140,9 +148,9 @@ Minimalist, Lock) and make it the **default Home app** (Settings → Apps → De
 - **Changing the clock** doesn't end anything early: blocks, passes, modes and cooldowns run on
   time measured since the phone started, and a clock moved by more than a few seconds is
   ignored. Restarting the phone accepts its clock again, but only forwards from the last time
-  Minimalist saw.
+  Quiet saw.
 - **Settings guard:** while anything is protected, Android Settings stays usable except
-  Minimalist's own pages, accessibility, notification access, Device Admin, uninstalling,
+  Quiet's own pages, accessibility, notification access, Device Admin, uninstalling,
   Date & time and Developer options. During modes and challenges all of Settings is closed.
 - **Uninstall protection:** Settings → Protection (Device Admin, with no other powers).
 

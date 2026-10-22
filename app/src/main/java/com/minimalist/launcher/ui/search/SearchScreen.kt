@@ -31,9 +31,9 @@ import com.minimalist.launcher.ui.components.TextAction
 import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Type
 
-/** Minimalist's own pages, found by name like apps are. */
+/** Quiet's own pages, found by name like apps are. */
 private val SHORTCUTS = listOf(
-    "Minimalist settings" to Destination.Settings,
+    "Quiet settings" to Destination.Settings,
     "Blocking" to Destination.Blocking,
     "Block an app" to Destination.BlockPicker,
     "Put away" to Destination.PutAway,

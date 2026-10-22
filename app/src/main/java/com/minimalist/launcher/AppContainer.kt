@@ -1,5 +1,8 @@
 package com.minimalist.launcher
 
+import com.minimalist.launcher.data.blocking.PartLesson
+import com.minimalist.launcher.domain.parts.AppPart
+import com.minimalist.launcher.domain.parts.PartLearning
 import com.minimalist.launcher.system.TrustedClock
 import android.content.Context
 import android.content.Intent
@@ -104,7 +107,7 @@ class AppContainer(context: Context) {
     /** The challenge on screen, if any. */
     val unlockRequest = MutableStateFlow<UnlockRequest?>(null)
 
-    /** Set while Minimalist itself sends you into Android Settings to grant a missing permission. */
+    /** Set while Quiet itself sends you into Android Settings to grant a missing permission. */
     @Volatile
     private var settingsPassUntil = 0L
 
@@ -131,6 +134,9 @@ class AppContainer(context: Context) {
 
     /** What the launcher should show over everything else, if anything. */
     val notice = MutableStateFlow<Notice?>(null)
+
+    /** A part of an app being taught right now; the blocking service fills it in. */
+    val partLesson = MutableStateFlow<PartLesson?>(null)
 
     init {
         apps.installedApps.filterNotNull().onEach {
@@ -193,7 +199,7 @@ class AppContainer(context: Context) {
             earn.state.value.apps.isNotEmpty()
     }
 
-    /** Minimalist is sending you to a Settings page to switch something on. */
+    /** Quiet is sending you to a Settings page to switch something on. */
     fun grantSettingsPass() {
         settingsPassUntil = TrustedClock.nowMillis() + SETTINGS_PASS_MILLIS
     }
@@ -381,6 +387,28 @@ class AppContainer(context: Context) {
     fun resistFriction(packageName: String, urge: Int?, reason: String?) {
         notice.value = null
         applicationScope.launch { friction.recordResisted(packageName, urge, reason) }
+    }
+
+    /** Opens [part]'s app so Quiet can watch you go to that part and leave. */
+    fun startPartLesson(part: AppPart) {
+        partLesson.value = PartLesson(part.key, part.packageName)
+        if (!launchPackage(part.packageName)) partLesson.value = null
+    }
+
+    /** You've left the app: keep what was only on screen at the end, if it looks like the feed. */
+    suspend fun finishPartLesson(lesson: PartLesson) {
+        val learned = PartLearning.candidates(lesson.packageName, lesson.atOpen, lesson.atLeave)
+        if (learned.isNotEmpty()) modes.addLearnedPartIds(lesson.partKey, learned)
+        partLesson.value = lesson.copy(learned = learned)
+    }
+
+    /** The answer to "Still worth it?": back into the app for another stretch, or stop here. */
+    fun answerStillWorthIt(notice: Notice.StillWorthIt, worth: Int?, keepGoing: Boolean) {
+        this.notice.value = null
+        applicationScope.launch(Dispatchers.Main.immediate) {
+            friction.recordScrollCheck(notice.packageName, worth, notice.minutes)
+            if (keepGoing) launchPackage(notice.packageName)
+        }
     }
 
     fun rateWorth(logId: Long, worth: Int?) {

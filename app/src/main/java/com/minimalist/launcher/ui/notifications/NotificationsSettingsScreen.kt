@@ -100,7 +100,7 @@ fun NotificationsSettingsScreen(onBack: () -> Unit, onOpenHeld: () -> Unit) {
                 )
             }
             if (!canPost) {
-                Label("Allow Minimalist to post notifications, so summaries can reach you.", style = Type.small)
+                Label("Allow Quiet to post notifications, so summaries can reach you.", style = Type.small)
                 TextAction(text = "Allow notifications", onClick = { askToPost.launch(Manifest.permission.POST_NOTIFICATIONS) }, style = Type.small)
             }
             TextAction(text = "Held notifications", onClick = onOpenHeld, modifier = Modifier.fillMaxWidth())
