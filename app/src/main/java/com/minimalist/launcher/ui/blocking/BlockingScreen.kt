@@ -25,6 +25,7 @@ import com.minimalist.launcher.blocking.BlockerService
 import com.minimalist.launcher.domain.DurationFormat
 import com.minimalist.launcher.ui.appViewModel
 import com.minimalist.launcher.ui.components.Label
+import com.minimalist.launcher.ui.components.LabelledAction
 import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.ScreenTitle
 import com.minimalist.launcher.ui.components.SectionHeader
@@ -40,6 +41,8 @@ fun BlockingScreen(
     onEditSchedule: (Long?) -> Unit,
     onAddLimit: () -> Unit,
     onEditLimit: (String) -> Unit,
+    onAddFriction: () -> Unit,
+    onOpenWantingLiking: () -> Unit,
     viewModel: BlockingViewModel = appViewModel { BlockingViewModel(it) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -123,6 +126,16 @@ fun BlockingScreen(
                 )
             }
             TextAction(text = "Add a limit", onClick = onAddLimit, modifier = Modifier.fillMaxWidth())
+
+            SectionHeader("Friction")
+            if (state.friction.isEmpty()) {
+                Label("None. Slowed-down apps open after a countdown, a reason and a chosen session.", style = Type.small)
+            }
+            state.friction.forEach { row ->
+                LabelledAction(label = row.label, action = "Remove", onAction = { viewModel.removeFriction(row.packageName) })
+            }
+            TextAction(text = "Slow down an app", onClick = onAddFriction, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Wanting vs liking, last 7 days", onClick = onOpenWantingLiking, style = Type.small, modifier = Modifier.fillMaxWidth())
 
             if (BuildConfig.DEBUG) {
                 SectionHeader("Debug build")

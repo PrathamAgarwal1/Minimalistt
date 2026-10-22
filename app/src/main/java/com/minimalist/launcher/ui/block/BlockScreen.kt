@@ -21,7 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.minimalist.launcher.data.blocking.BlockNotice
+import com.minimalist.launcher.data.blocking.Notice
 import com.minimalist.launcher.domain.DurationFormat
 import com.minimalist.launcher.domain.blocking.BlockReason
 import com.minimalist.launcher.domain.blocking.ScheduleRules
@@ -39,7 +39,7 @@ private const val URGE_WAVE_SECONDS = 60
 
 /** Shown in place of a blocked app. Calm, never scolding. */
 @Composable
-fun BlockScreen(notice: BlockNotice, onClose: () -> Unit) {
+fun BlockScreen(notice: Notice.Blocked, onClose: () -> Unit, onUrgeRidden: () -> Unit = {}) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var riding by remember(notice) { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -62,7 +62,7 @@ fun BlockScreen(notice: BlockNotice, onClose: () -> Unit) {
         Spacer(Modifier.weight(1f))
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             if (riding) {
-                UrgeWave(appLabel = notice.label)
+                UrgeWave(appLabel = notice.label, onDone = onUrgeRidden)
             } else {
                 Label(notice.label, style = Type.title)
                 Spacer(Modifier.height(12.dp))
@@ -89,13 +89,14 @@ fun BlockScreen(notice: BlockNotice, onClose: () -> Unit) {
 
 /** A minute of slow breathing: urges rise, peak and pass like a wave. */
 @Composable
-private fun UrgeWave(appLabel: String) {
+fun UrgeWave(appLabel: String, onDone: () -> Unit = {}) {
     var elapsed by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         while (elapsed < URGE_WAVE_SECONDS) {
             delay(1_000)
             elapsed++
         }
+        onDone()
     }
     val done = elapsed >= URGE_WAVE_SECONDS
     // 4 s in, 6 s out: a slow exhale settles the urge.

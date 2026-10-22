@@ -13,10 +13,21 @@ import androidx.room.RoomDatabase
         ScheduleEntity::class,
         AppLimitEntity::class,
         DailyUsageEntity::class,
+        FrictionAppEntity::class,
+        FrictionLogEntity::class,
+        ModeLogEntity::class,
+        ReflectionEntity::class,
+        HabitEntity::class,
+        HabitCheckEntity::class,
+        HeldNotificationEntity::class,
+        VipContactEntity::class,
+        UrgentLogEntity::class,
+        BlockedDomainEntity::class,
+        PickupEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -25,6 +36,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun blockingDao(): BlockingDao
 
     abstract fun usageDao(): UsageDao
+
+    abstract fun frictionDao(): FrictionDao
 
     companion object {
         fun build(context: Context): AppDatabase =

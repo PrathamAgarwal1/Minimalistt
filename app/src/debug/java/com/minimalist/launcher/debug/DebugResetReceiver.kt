@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Clears every block, schedule, limit and today's counters. Debug builds only. */
+/** Clears every block, schedule, limit, friction app and today's counters. Debug builds only. */
 class DebugResetReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -18,8 +18,7 @@ class DebugResetReceiver : BroadcastReceiver() {
         val pending = goAsync()
         container.applicationScope.launch {
             try {
-                container.blocking.clearEverything()
-                container.blockNotice.value = null
+                container.resetAll()
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context.applicationContext, "Minimalist: all blocks cleared", Toast.LENGTH_SHORT).show()
                 }

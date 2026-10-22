@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.minimalist.launcher.data.blocking.Notice
 import com.minimalist.launcher.domain.FavouriteOrder
 import com.minimalist.launcher.ui.apps.AppPickerScreen
 import com.minimalist.launcher.ui.apps.PickerMode
@@ -19,12 +20,16 @@ import com.minimalist.launcher.ui.blocking.BlockDurationScreen
 import com.minimalist.launcher.ui.blocking.BlockingScreen
 import com.minimalist.launcher.ui.blocking.LimitEditScreen
 import com.minimalist.launcher.ui.blocking.ScheduleEditScreen
+import com.minimalist.launcher.ui.blocking.WantingLikingScreen
+import com.minimalist.launcher.ui.friction.FrictionScreen
+import com.minimalist.launcher.ui.friction.WorthScreen
 import com.minimalist.launcher.ui.home.HomeScreen
 import com.minimalist.launcher.ui.placeholder.ComingLaterScreen
 import com.minimalist.launcher.ui.search.SearchScreen
 import com.minimalist.launcher.ui.settings.SettingsScreen
 import com.minimalist.launcher.ui.settings.SettingsViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 sealed interface Destination {
     val parent: Destination?
@@ -39,6 +44,8 @@ sealed interface Destination {
     data object LimitPicker : Destination { override val parent = Blocking }
     data class LimitEdit(val packageName: String) : Destination { override val parent = Blocking }
     data class ScheduleEdit(val scheduleId: Long?) : Destination { override val parent = Blocking }
+    data object FrictionPicker : Destination { override val parent = Blocking }
+    data object WantingLiking : Destination { override val parent = Blocking }
     data object PutAway : Destination { override val parent = Home }
     data object UrgentMessage : Destination { override val parent = Home }
 }
@@ -51,7 +58,7 @@ sealed interface Destination {
 fun LauncherRoot(homePresses: Flow<Unit>) {
     val container = appContainer()
     var destination by remember { mutableStateOf<Destination>(Destination.Home) }
-    val notice by container.blockNotice.collectAsStateWithLifecycle()
+    val notice by container.notice.collectAsStateWithLifecycle()
 
     LaunchedEffect(homePresses) { homePresses.collect { destination = Destination.Home } }
     LaunchedEffect(notice) { if (notice != null) destination = Destination.Home }
@@ -61,7 +68,16 @@ fun LauncherRoot(homePresses: Flow<Unit>) {
         Crossfade(targetState = destination, animationSpec = tween(150), label = "screen") { screen ->
             DestinationContent(screen, navigate = { destination = it })
         }
-        notice?.let { BlockScreen(it, onClose = { container.blockNotice.value = null }) }
+        when (val current = notice) {
+            is Notice.Blocked -> BlockScreen(
+                notice = current,
+                onClose = { container.notice.value = null },
+                onUrgeRidden = { container.applicationScope.launch { container.friction.recordResisted(current.packageName, null, null) } },
+            )
+            is Notice.Friction -> FrictionScreen(current)
+            is Notice.WorthIt -> WorthScreen(current)
+            null -> Unit
+        }
     }
 }
 
@@ -103,6 +119,25 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onEditSchedule = { navigate(Destination.ScheduleEdit(it)) },
             onAddLimit = { navigate(Destination.LimitPicker) },
             onEditLimit = { navigate(Destination.LimitEdit(it)) },
+            onAddFriction = { navigate(Destination.FrictionPicker) },
+            onOpenWantingLiking = { navigate(Destination.WantingLiking) },
+        )
+        Destination.FrictionPicker -> {
+            val container = appContainer()
+            AppPickerScreen(
+                title = "Slow down an app",
+                mode = PickerMode.Blockable,
+                note = "It opens only after a countdown, a reason and a chosen session length.",
+                onBack = back,
+                onPick = {
+                    container.applicationScope.launch { container.friction.addApp(it.packageName) }
+                    back()
+                },
+            )
+        }
+        Destination.WantingLiking -> WantingLikingScreen(
+            onBack = back,
+            onBlock = { navigate(Destination.BlockDuration(it)) },
         )
         Destination.BlockPicker -> AppPickerScreen(
             title = "Block an app",

@@ -11,7 +11,7 @@ import android.view.accessibility.AccessibilityManager
 import com.minimalist.launcher.AppContainer
 import com.minimalist.launcher.MainActivity
 import com.minimalist.launcher.MinimalistApp
-import com.minimalist.launcher.data.blocking.BlockNotice
+import com.minimalist.launcher.data.blocking.Notice
 import com.minimalist.launcher.domain.blocking.BlockDecision
 import com.minimalist.launcher.system.HomeRole
 import kotlinx.coroutines.CoroutineScope
@@ -97,13 +97,20 @@ class BlockerService : AccessibilityService() {
                 val packageName = event.packageName
                 if (packageName == usage.currentPackage) return
                 usage.switchTo(packageName)
+                // Back home: any friction session is over, so ask whether it was worth it.
+                if (packageName == this.packageName) endFrictionSessions()
                 if (checker.isProtected(packageName)) return
                 when (val decision = checker.check(packageName, atOpen = true)) {
                     is BlockDecision.Blocked -> {
                         usage.recordBlockedAttempt(packageName)
-                        sendHome(packageName, decision)
+                        sendHome(Notice.Blocked(packageName, container.labelFor(packageName), decision))
                     }
-                    BlockDecision.Allowed -> usage.recordOpen(packageName)
+                    BlockDecision.Allowed ->
+                        if (container.friction.needsFriction(packageName)) {
+                            sendHome(Notice.Friction(packageName, container.labelFor(packageName)))
+                        } else {
+                            usage.recordOpen(packageName)
+                        }
                 }
             }
             Event.Tick -> {
@@ -112,14 +119,31 @@ class BlockerService : AccessibilityService() {
                 if (checker.isProtected(packageName)) return
                 // A schedule started, a block was added, or the daily time ran out mid-session.
                 val decision = checker.check(packageName, atOpen = false)
-                if (decision is BlockDecision.Blocked) sendHome(packageName, decision)
+                if (decision is BlockDecision.Blocked) {
+                    container.friction.endSession(packageName)
+                    sendHome(Notice.Blocked(packageName, container.labelFor(packageName), decision))
+                    return
+                }
+                // The chosen session length is up.
+                val session = container.friction.sessionFor(packageName)
+                if (session != null && session.endsAtMillis <= System.currentTimeMillis()) {
+                    container.friction.endSession(packageName)
+                    sendHome(Notice.WorthIt(session.logId, packageName, container.labelFor(packageName)))
+                }
             }
             Event.ScreenOff -> usage.switchTo(null)
         }
     }
 
-    private suspend fun sendHome(packageName: String, decision: BlockDecision.Blocked) {
-        container.blockNotice.value = BlockNotice(packageName, container.labelFor(packageName), decision)
+    private suspend fun endFrictionSessions() {
+        val ended = container.friction.allSessions().mapNotNull { container.friction.endSession(it.packageName) }
+        ended.maxByOrNull { it.endsAtMillis }?.let {
+            container.notice.value = Notice.WorthIt(it.logId, it.packageName, container.labelFor(it.packageName))
+        }
+    }
+
+    private suspend fun sendHome(notice: Notice) {
+        container.notice.value = notice
         performGlobalAction(GLOBAL_ACTION_HOME)
         if (!HomeRole.isDefaultHome(this)) {
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

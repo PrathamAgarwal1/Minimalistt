@@ -20,8 +20,11 @@ data class ScheduleRow(val schedule: Schedule, val appLabels: List<String>)
 
 data class LimitRow(val label: String, val limit: AppLimit)
 
+data class FrictionRow(val packageName: String, val label: String)
+
 data class BlockingState(
     val nowMillis: Long = System.currentTimeMillis(),
+    val friction: List<FrictionRow> = emptyList(),
     val blocks: List<BlockRow> = emptyList(),
     val schedules: List<ScheduleRow> = emptyList(),
     val limits: List<LimitRow> = emptyList(),
@@ -43,10 +46,12 @@ class BlockingViewModel(private val container: AppContainer) : ViewModel() {
         blocking.rules,
         container.apps.installedApps,
         container.timeScale,
+        container.friction.apps,
         seconds,
-    ) { rules, _, scale, now ->
+    ) { rules, _, scale, frictionApps, now ->
         BlockingState(
             nowMillis = now,
+            friction = frictionApps.map { FrictionRow(it, container.labelFor(it)) }.sortedBy { it.label.lowercase() },
             blocks = rules.blocks
                 .filterValues { it > now }
                 .map { (packageName, until) -> BlockRow(packageName, container.labelFor(packageName), until) }
@@ -92,6 +97,10 @@ class BlockingViewModel(private val container: AppContainer) : ViewModel() {
 
     fun deleteSchedule(id: Long) {
         viewModelScope.launch { blocking.deleteSchedule(id) }
+    }
+
+    fun removeFriction(packageName: String) {
+        viewModelScope.launch { container.friction.removeApp(packageName) }
     }
 
     fun setTestMode(enabled: Boolean) {

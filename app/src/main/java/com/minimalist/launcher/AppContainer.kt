@@ -3,11 +3,12 @@ package com.minimalist.launcher
 import android.content.Context
 import com.minimalist.launcher.data.apps.AppRepository
 import com.minimalist.launcher.data.blocking.BlockChecker
-import com.minimalist.launcher.data.blocking.BlockNotice
 import com.minimalist.launcher.data.blocking.BlockingRepository
+import com.minimalist.launcher.data.blocking.Notice
 import com.minimalist.launcher.data.blocking.ProtectedApps
 import com.minimalist.launcher.data.blocking.UsageTracker
 import com.minimalist.launcher.data.db.AppDatabase
+import com.minimalist.launcher.data.friction.FrictionRepository
 import com.minimalist.launcher.data.settings.SettingsRepository
 import com.minimalist.launcher.data.settings.settingsDataStore
 import com.minimalist.launcher.domain.LaunchableApp
@@ -25,8 +26,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Duration
 
-/** Process-wide singletons, built once in [MinimalistApp]. The accessibility service shares them. */
+/** Process-wide singletons, built once in [MinimalistApp]. The services share them. */
 class AppContainer(context: Context) {
 
     val appContext: Context = context.applicationContext
@@ -50,10 +52,12 @@ class AppContainer(context: Context) {
 
     val protectedApps = ProtectedApps(appContext)
 
+    val friction = FrictionRepository(database, applicationScope)
+
     val blockChecker = BlockChecker(blocking, usage, protectedApps, timeScale)
 
-    /** The block screen the launcher should show, if any. */
-    val blockNotice = MutableStateFlow<BlockNotice?>(null)
+    /** What the launcher should show over everything else, if anything. */
+    val notice = MutableStateFlow<Notice?>(null)
 
     init {
         apps.installedApps.filterNotNull().onEach { protectedApps.refresh() }.launchIn(applicationScope)
@@ -62,16 +66,54 @@ class AppContainer(context: Context) {
     fun labelFor(packageName: String): String =
         apps.installedApps.value?.firstOrNull { it.packageName == packageName }?.label ?: packageName
 
-    /** Opens [app] from the launcher, or shows the block screen instead of a flash of the app. */
+    /** Opens [app] from the launcher, going through blocks and friction first. */
     fun open(app: LaunchableApp) {
         applicationScope.launch(Dispatchers.Main.immediate) {
             when (val decision = blockChecker.check(app.packageName, atOpen = true)) {
                 is BlockDecision.Blocked -> {
                     usage.recordBlockedAttempt(app.packageName)
-                    blockNotice.value = BlockNotice(app.packageName, app.label, decision)
+                    notice.value = Notice.Blocked(app.packageName, app.label, decision)
                 }
-                BlockDecision.Allowed -> apps.launch(app)
+                BlockDecision.Allowed ->
+                    if (friction.needsFriction(app.packageName)) {
+                        notice.value = Notice.Friction(app.packageName, app.label)
+                    } else {
+                        apps.launch(app)
+                    }
             }
         }
+    }
+
+    /** Opens the main launcher entry of [packageName], bypassing every gate. */
+    fun launchPackage(packageName: String): Boolean {
+        val app = apps.installedApps.value?.firstOrNull { it.packageName == packageName } ?: return false
+        return apps.launch(app)
+    }
+
+    /** The friction flow is done: start the session and open the app. */
+    fun openAfterFriction(packageName: String, urge: Int, reason: String, minutes: Int) {
+        applicationScope.launch(Dispatchers.Main.immediate) {
+            val length = timeScale.value.dailyLimit(Duration.ofMinutes(minutes.toLong())).toMillis()
+            friction.startSession(packageName, urge, reason, minutes, length)
+            notice.value = null
+            launchPackage(packageName)
+        }
+    }
+
+    fun resistFriction(packageName: String, urge: Int?, reason: String?) {
+        notice.value = null
+        applicationScope.launch { friction.recordResisted(packageName, urge, reason) }
+    }
+
+    fun rateWorth(logId: Long, worth: Int?) {
+        notice.value = null
+        if (worth != null) applicationScope.launch { friction.rateWorth(logId, worth) }
+    }
+
+    /** Debug reset: every block, schedule, limit, friction app and today's counters. */
+    suspend fun resetAll() {
+        blocking.clearEverything()
+        friction.clear()
+        notice.value = null
     }
 }
