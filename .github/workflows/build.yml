@@ -27,7 +27,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Unit tests and debug APK
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest assembleDebug assembleRelease
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleRelease
 
       - name: Check the APK has no INTERNET permission
         run: |

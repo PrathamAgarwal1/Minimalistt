@@ -53,8 +53,9 @@ fun BlockingScreen(
         runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 
     // Straight to this service's own switch; the full accessibility list if the phone refuses.
+    // The action is not in the public SDK, hence the string.
     fun openBlockerSettings() {
-        val details = Intent(Settings.ACTION_ACCESSIBILITY_DETAILS_SETTINGS)
+        val details = Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS")
             .putExtra(Intent.EXTRA_COMPONENT_NAME, ComponentName(context, BlockerService::class.java).flattenToString())
         if (!open(details)) open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
