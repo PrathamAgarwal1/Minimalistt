@@ -84,6 +84,7 @@ class ModeCoordinator(private val container: AppContainer) {
         // The phone has opened: show the morning screen once.
         if (ended == LockKind.Night.name) modes.setMorningScreenDay(now.toLocalDate().toEpochDay())
         container.notifications.onTick(lock, nowMillis)
+        container.earn.saveToday(container.timeScale.value)
     }
 
     private suspend fun putAwayFor(minutes: Int, nowMillis: Long) {

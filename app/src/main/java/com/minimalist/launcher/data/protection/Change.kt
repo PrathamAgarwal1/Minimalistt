@@ -2,6 +2,7 @@ package com.minimalist.launcher.data.protection
 
 import com.minimalist.launcher.domain.blocking.AppLimit
 import com.minimalist.launcher.domain.blocking.Schedule
+import com.minimalist.launcher.domain.earn.EarnRules
 import com.minimalist.launcher.domain.modes.DayModeConfig
 import com.minimalist.launcher.domain.modes.StudyWindow
 import org.json.JSONArray
@@ -31,6 +32,8 @@ sealed interface Change {
     data class RemoveDomain(val domain: String) : Change
     data class SetTestMode(val enabled: Boolean) : Change
     data class SetFrictionBase(val seconds: Int) : Change
+    data class SetEarnRules(val rules: EarnRules) : Change
+    data class RemoveEarnedApp(val packageName: String) : Change
 }
 
 /** Stores a queued change as JSON so it survives restarts until its cooldown ends. */
@@ -76,6 +79,13 @@ object ChangeCodec {
             is Change.RemoveDomain -> put("domain", change.domain)
             is Change.SetTestMode -> put("enabled", change.enabled)
             is Change.SetFrictionBase -> put("seconds", change.seconds)
+            is Change.SetEarnRules -> {
+                put("stepsPerUnit", change.rules.stepsPerUnit)
+                put("minutesPerSteps", change.rules.minutesPerSteps)
+                put("focusMinutes", change.rules.focusMinutes)
+                put("minutesPerFocus", change.rules.minutesPerFocus)
+            }
+            is Change.RemoveEarnedApp -> put("package", change.packageName)
         }
     }.toString()
 
@@ -106,6 +116,10 @@ object ChangeCodec {
             "RemoveDomain" -> Change.RemoveDomain(json.getString("domain"))
             "SetTestMode" -> Change.SetTestMode(json.getBoolean("enabled"))
             "SetFrictionBase" -> Change.SetFrictionBase(json.getInt("seconds"))
+            "SetEarnRules" -> Change.SetEarnRules(
+                EarnRules(json.getInt("stepsPerUnit"), json.getInt("minutesPerSteps"), json.getInt("focusMinutes"), json.getInt("minutesPerFocus")),
+            )
+            "RemoveEarnedApp" -> Change.RemoveEarnedApp(pkg!!)
             else -> null
         }
     }.getOrNull()

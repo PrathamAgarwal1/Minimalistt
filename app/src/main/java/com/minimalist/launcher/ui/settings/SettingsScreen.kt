@@ -42,6 +42,9 @@ fun SettingsScreen(
     onOpenWebsites: () -> Unit,
     onOpenProtection: () -> Unit,
     onOpenAppearance: () -> Unit,
+    onOpenEarn: () -> Unit,
+    onOpenStats: () -> Unit,
+    onOpenSetup: () -> Unit,
     viewModel: SettingsViewModel = appViewModel { SettingsViewModel(it) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,7 +79,10 @@ fun SettingsScreen(
             TextAction(text = "Notifications and VIPs", onClick = onOpenNotifications, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Websites and browsers", onClick = onOpenWebsites, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Protection, letters and emergency", onClick = onOpenProtection, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Earned screen time", onClick = onOpenEarn, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Stats and export", onClick = onOpenStats, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Appearance", onClick = onOpenAppearance, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Setup and status", onClick = onOpenSetup, modifier = Modifier.fillMaxWidth())
 
             SectionHeader("Home app")
             if (isHome) {

@@ -47,6 +47,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val centred = booleanPreferencesKey("centred")
         val glance = stringSetPreferencesKey("glance")
         val showIntention = booleanPreferencesKey("show_intention")
+        val setupDone = booleanPreferencesKey("setup_done")
+    }
+
+    /** Whether the first-run setup has been seen. */
+    val setupDone: Flow<Boolean> = dataStore.data.map { it[Keys.setupDone] ?: false }.distinctUntilChanged()
+
+    suspend fun setSetupDone() {
+        dataStore.edit { it[Keys.setupDone] = true }
     }
 
     val appearance: Flow<Appearance> = dataStore.data.map { prefs ->

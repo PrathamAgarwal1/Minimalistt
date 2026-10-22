@@ -4,6 +4,7 @@ import com.minimalist.launcher.AppContainer
 import com.minimalist.launcher.data.db.LetterEntity
 import com.minimalist.launcher.data.db.PendingChangeEntity
 import com.minimalist.launcher.domain.blocking.ScheduleRules
+import com.minimalist.launcher.domain.earn.Earning
 import com.minimalist.launcher.domain.protection.Protection
 import com.minimalist.launcher.ui.blocking.BlockingText
 import kotlinx.coroutines.flow.Flow
@@ -102,6 +103,8 @@ class ChangeGate(private val container: AppContainer) {
             is Change.RemoveDomain -> change.domain in container.websites.customDomains.value
             is Change.SetTestMode -> Protection.testModeWeakens(change.enabled)
             is Change.SetFrictionBase -> Protection.frictionBaseWeakens(modes.frictionBaseSeconds, change.seconds)
+            is Change.SetEarnRules -> Earning.rulesWeaken(container.earn.state.value.rules, change.rules)
+            is Change.RemoveEarnedApp -> change.packageName in container.earn.state.value.apps
         }
     }
 
@@ -129,6 +132,8 @@ class ChangeGate(private val container: AppContainer) {
             is Change.RemoveDomain -> container.websites.remove(change.domain)
             is Change.SetTestMode -> container.settings.setTestMode(change.enabled)
             is Change.SetFrictionBase -> modes.setFrictionBase(change.seconds)
+            is Change.SetEarnRules -> container.earn.setRules(change.rules)
+            is Change.RemoveEarnedApp -> container.earn.removeApp(change.packageName)
         }
     }
 
@@ -165,6 +170,8 @@ class ChangeGate(private val container: AppContainer) {
             is Change.RemoveDomain -> "Unblock ${change.domain}"
             is Change.SetTestMode -> "Turn on test mode"
             is Change.SetFrictionBase -> "Start friction countdowns at ${change.seconds} s"
+            is Change.SetEarnRules -> "Make earning screen time easier"
+            is Change.RemoveEarnedApp -> "Let ${label(change.packageName)} open without earned time"
         }
     }
 }

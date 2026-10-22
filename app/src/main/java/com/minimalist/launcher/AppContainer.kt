@@ -13,7 +13,9 @@ import com.minimalist.launcher.data.blocking.ProtectedApps
 import com.minimalist.launcher.data.blocking.UsageTracker
 import com.minimalist.launcher.data.blocking.WebsiteChecker
 import com.minimalist.launcher.data.db.AppDatabase
+import com.minimalist.launcher.data.earn.EarnRepository
 import com.minimalist.launcher.data.friction.FrictionRepository
+import com.minimalist.launcher.data.stats.StatsRepository
 import com.minimalist.launcher.data.modes.ModesRepository
 import com.minimalist.launcher.data.modes.modesDataStore
 import com.minimalist.launcher.data.notifications.NotificationsRepository
@@ -90,6 +92,10 @@ class AppContainer(context: Context) {
     /** Short-lived permissions to open an app whatever blocks it, e.g. WhatsApp for an urgent message. */
     private val passes = ConcurrentHashMap<String, Long>()
 
+    val earn = EarnRepository(appContext.modesDataStore, database, usage, applicationScope)
+
+    val stats = StatsRepository(database, appContext.packageName)
+
     /** Challenge passes and the monthly emergency unlock. */
     val unlocks = UnlockRepository(database, applicationScope)
 
@@ -112,6 +118,7 @@ class AppContainer(context: Context) {
         hasPass = { packageName ->
             (passes[packageName] ?: 0L) > System.currentTimeMillis() || unlocks.hasPass(UnlockTarget.App(packageName))
         },
+        earnedLeft = { packageName -> earn.leftFor(packageName, timeScale.value) },
     )
 
     val coordinator = ModeCoordinator(this)
@@ -185,7 +192,8 @@ class AppContainer(context: Context) {
             friction.apps.value.isNotEmpty() ||
             websites.customDomains.value.isNotEmpty() ||
             state.allowedBrowser != null ||
-            state.dayModes.nightEnabled
+            state.dayModes.nightEnabled ||
+            earn.state.value.apps.isNotEmpty()
     }
 
     /** Minimalist is sending you to a Settings page to switch something on. */

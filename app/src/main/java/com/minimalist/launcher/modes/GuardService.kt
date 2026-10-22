@@ -1,5 +1,6 @@
 package com.minimalist.launcher.modes
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,7 +10,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
@@ -37,7 +43,7 @@ import kotlinx.coroutines.launch
  * Keeps modes on time while the launcher is in the background: counts pickups, notices
  * unplugging, runs study hours and batches, and lays the red tint over the screen at night.
  */
-class GuardService : Service() {
+class GuardService : Service(), SensorEventListener {
 
     private lateinit var container: AppContainer
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -79,6 +85,7 @@ class GuardService : Service() {
         )
         running = true
         container.coordinator.onBedtimeReminder = ::postBedtimeReminder
+        startStepCounting()
         scope.launch {
             while (isActive) {
                 container.coordinator.tick()
@@ -88,12 +95,16 @@ class GuardService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_COUNT_STEPS) startStepCounting()
+        return START_STICKY
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         running = false
+        runCatching { getSystemService(SensorManager::class.java).unregisterListener(this) }
         container.coordinator.onBedtimeReminder = null
         runCatching { unregisterReceiver(receiver) }
         removeTint()
@@ -114,6 +125,23 @@ class GuardService : Service() {
             getSystemService(NotificationManager::class.java).notify(STATUS_ID, statusNotification(lock))
         }
     }
+
+    /** Steps earn screen time. Needs the activity recognition permission; without it, nothing is counted. */
+    private fun startStepCounting() {
+        if (checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) return
+        val sensors = getSystemService(SensorManager::class.java)
+        val counter = sensors.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) ?: return
+        sensors.unregisterListener(this)
+        sensors.registerListener(this, counter, SensorManager.SENSOR_DELAY_NORMAL, STEP_BATCH_MICROS)
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type != Sensor.TYPE_STEP_COUNTER) return
+        val reading = event.values.firstOrNull()?.toLong() ?: return
+        scope.launch { container.earn.onStepReading(reading) }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
     /** Grey through wind-down and night; afterwards, put back only what we changed. */
     private suspend fun updateGrayscale(wanted: Boolean) {
@@ -188,6 +216,7 @@ class GuardService : Service() {
         private const val TICK_MILLIS = 15_000L
         private const val STATUS_ID = 1
         private const val REMINDER_ID = 3
+        private const val STEP_BATCH_MICROS = 60_000_000
         private const val TINT_COLOR = 0xFF6B1A00.toInt()
         const val STATUS_CHANNEL = "status"
         const val SUMMARY_CHANNEL = "summaries"
@@ -196,8 +225,15 @@ class GuardService : Service() {
         var running = false
             private set
 
+        private const val ACTION_COUNT_STEPS = "count_steps"
+
         fun start(context: Context) {
             runCatching { context.startForegroundService(Intent(context, GuardService::class.java)) }
+        }
+
+        /** After the activity recognition permission is granted. */
+        fun startCountingSteps(context: Context) {
+            runCatching { context.startForegroundService(Intent(context, GuardService::class.java).setAction(ACTION_COUNT_STEPS)) }
         }
 
         fun createChannels(context: Context) {

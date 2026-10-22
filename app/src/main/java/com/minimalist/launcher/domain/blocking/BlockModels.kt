@@ -58,6 +58,9 @@ sealed interface BlockReason {
         override val untilMillis: Long get() = Long.MAX_VALUE
     }
 
+    /** An earned-time app with no earned time left today. */
+    data class EarnedUp(override val untilMillis: Long) : BlockReason
+
     /** A website that belongs to a blocked app, or one added by hand. */
     data class Website(val domain: String, override val untilMillis: Long) : BlockReason
 }

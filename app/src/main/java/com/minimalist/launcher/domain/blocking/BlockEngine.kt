@@ -24,6 +24,7 @@ object BlockEngine {
         lockAllowedPackages: Set<String> = emptySet(),
         otherBrowsers: Set<String> = emptySet(),
         allowedBrowserLabel: String = "",
+        earnedLeftMillis: Long? = null,
     ): BlockDecision {
         if (packageName in protectedPackages) return BlockDecision.Allowed
         val nowMillis = now.toInstant().toEpochMilli()
@@ -43,6 +44,10 @@ object BlockEngine {
                     reasons += BlockReason.Scheduled(schedule.name, it.toInstant().toEpochMilli())
                 }
             }
+
+        if (earnedLeftMillis != null && earnedLeftMillis <= 0) {
+            reasons += BlockReason.EarnedUp(now.toLocalDate().plusDays(1).atStartOfDay(now.zone).toInstant().toEpochMilli())
+        }
 
         rules.limits[packageName]?.let { limit ->
             val midnight = now.toLocalDate().plusDays(1).atStartOfDay(now.zone).toInstant().toEpochMilli()

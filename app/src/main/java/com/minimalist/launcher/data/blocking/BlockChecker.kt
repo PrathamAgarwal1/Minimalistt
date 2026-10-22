@@ -23,6 +23,8 @@ class BlockChecker(
     private val timeScale: StateFlow<TimeScale>,
     private val phoneState: () -> PhoneState,
     private val hasPass: (String) -> Boolean,
+    /** Earned time left for an earned-time app, or null for any other app. */
+    private val earnedLeft: suspend (String) -> Long? = { null },
 ) {
     fun isProtected(packageName: String) = packageName in protectedApps.packages
 
@@ -43,6 +45,7 @@ class BlockChecker(
             lockAllowedPackages = phone.lockAllowedPackages,
             otherBrowsers = phone.otherBrowsers,
             allowedBrowserLabel = phone.allowedBrowserLabel,
+            earnedLeftMillis = earnedLeft(packageName),
         )
     }
 }

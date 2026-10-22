@@ -26,7 +26,9 @@ import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.ScreenTitle
 import com.minimalist.launcher.ui.components.SectionHeader
 import com.minimalist.launcher.ui.components.TextAction
+import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Type
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import java.time.Duration
 
@@ -55,6 +57,14 @@ fun PutAwayStartScreen(onBack: () -> Unit) {
                 style = Type.small,
             )
             Spacer(Modifier.height(8.dp))
+            val rules = container.earn.state.collectAsStateWithLifecycle().value.rules
+            TextAction(
+                text = "Focus session · ${BlockingText.minutes(rules.focusMinutes)}",
+                onClick = { start(rules.focusMinutes) },
+                style = Type.item.copy(color = Palette.Accent),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Label("Run it to the end to earn ${rules.minutesPerFocus} min for earned-time apps.", style = Type.small)
             OPTIONS.forEach { minutes ->
                 TextAction(text = BlockingText.minutes(minutes), onClick = { start(minutes) }, style = Type.item, modifier = Modifier.fillMaxWidth())
             }

@@ -130,6 +130,7 @@ private fun reasonText(reason: BlockReason): String = when (reason) {
     is BlockReason.OpenLimit -> "You've opened it ${reason.maxOpens} ${if (reason.maxOpens == 1) "time" else "times"} today, your limit. It opens again at midnight."
     is BlockReason.Locked -> "${reason.kind.label} is on. Only calls, messages and your essentials work ${BlockingText.until(reason.untilMillis)}."
     is BlockReason.OtherBrowser -> "Only ${reason.allowedLabel} is allowed for browsing."
+    is BlockReason.EarnedUp -> "Today's earned time is used up. Walk, or finish a focus session, to earn more."
     is BlockReason.Website ->
         if (reason.untilMillis == Long.MAX_VALUE) {
             "You blocked this website."

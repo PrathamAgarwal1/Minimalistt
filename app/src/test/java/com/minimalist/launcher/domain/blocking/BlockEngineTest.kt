@@ -154,3 +154,19 @@ class BlockEngineLockTest {
         assertEquals(BlockDecision.Allowed, evaluate("com.android.chrome", null, browsers = setOf("org.mozilla.firefox")))
     }
 }
+
+class BlockEngineEarnedTest {
+
+    private val now = ZonedDateTime.of(2026, 10, 23, 15, 0, 0, 0, ZoneId.of("Asia/Kolkata"))
+
+    private fun evaluate(left: Long?) =
+        BlockEngine.evaluate("com.netflix.mediaclient", now, BlockRules.NONE, UsageToday.NONE, emptySet(), TimeScale.REAL, true, earnedLeftMillis = left)
+
+    @Test
+    fun earnedAppsOpenOnlyWithTimeLeft() {
+        assertEquals(BlockDecision.Allowed, evaluate(null))
+        assertEquals(BlockDecision.Allowed, evaluate(60_000))
+        assertTrue((evaluate(0) as BlockDecision.Blocked).primary is BlockReason.EarnedUp)
+        assertTrue(evaluate(-5) is BlockDecision.Blocked)
+    }
+}

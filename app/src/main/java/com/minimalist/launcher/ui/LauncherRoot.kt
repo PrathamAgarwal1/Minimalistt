@@ -44,7 +44,10 @@ import com.minimalist.launcher.ui.notifications.NotificationsSettingsScreen
 import com.minimalist.launcher.ui.notifications.UrgentScreen
 import com.minimalist.launcher.ui.websites.WebsitesScreen
 import com.minimalist.launcher.ui.search.SearchScreen
+import com.minimalist.launcher.ui.earn.EarnScreen
 import com.minimalist.launcher.ui.settings.AppearanceScreen
+import com.minimalist.launcher.ui.setup.SetupScreen
+import com.minimalist.launcher.ui.stats.StatsScreen
 import com.minimalist.launcher.ui.settings.SettingsScreen
 import com.minimalist.launcher.ui.settings.SettingsViewModel
 import kotlinx.coroutines.flow.Flow
@@ -76,6 +79,11 @@ sealed interface Destination {
     data object Websites : Destination { override val parent = Settings }
     data object Protection : Destination { override val parent = Settings }
     data object Appearance : Destination { override val parent = Settings }
+    data object Earn : Destination { override val parent = Settings }
+    data object EarnPicker : Destination { override val parent = Earn }
+    data object Stats : Destination { override val parent = Settings }
+    data object StatsWantingLiking : Destination { override val parent = Stats }
+    data object Setup : Destination { override val parent = Settings }
     data object PendingChanges : Destination { override val parent = Protection }
     data object Letters : Destination { override val parent = Protection }
     data object PutAway : Destination { override val parent = Home }
@@ -95,6 +103,7 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
     val changeRequest by container.changes.request.collectAsStateWithLifecycle()
     val unlockRequest by container.unlockRequest.collectAsStateWithLifecycle()
     val modesState by container.modes.state.collectAsStateWithLifecycle()
+    val setupDone by container.settings.setupDone.collectAsStateWithLifecycle(true)
 
     LaunchedEffect(homePresses) { homePresses.collect { destination = Destination.Home } }
     LaunchedEffect(openRequests) {
@@ -130,6 +139,11 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
         if (lock == null && notice == null && modesState.morningScreenDay == java.time.LocalDate.now().toEpochDay()) {
             MorningScreen()
         }
+        // First run: walk through every permission once.
+        if (!setupDone && lock == null) {
+            val scope = rememberCoroutineScope()
+            SetupScreen(onBack = {}, onFinish = { scope.launch { container.settings.setSetupDone() } })
+        }
         changeRequest?.let { ChangeConfirmScreen(it) }
         unlockRequest?.let { ChallengeScreen(it) }
     }
@@ -159,7 +173,27 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onOpenWebsites = { navigate(Destination.Websites) },
             onOpenProtection = { navigate(Destination.Protection) },
             onOpenAppearance = { navigate(Destination.Appearance) },
+            onOpenEarn = { navigate(Destination.Earn) },
+            onOpenStats = { navigate(Destination.Stats) },
+            onOpenSetup = { navigate(Destination.Setup) },
         )
+        Destination.Earn -> EarnScreen(onBack = back, onAddApp = { navigate(Destination.EarnPicker) })
+        Destination.EarnPicker -> {
+            val container = appContainer()
+            AppPickerScreen(
+                title = "Needs earned time",
+                mode = PickerMode.Blockable,
+                note = "It opens only while you have earned time left.",
+                onBack = back,
+                onPick = {
+                    container.applicationScope.launch { container.earn.addApp(it.packageName) }
+                    back()
+                },
+            )
+        }
+        Destination.Stats -> StatsScreen(onBack = back, onOpenWantingLiking = { navigate(Destination.StatsWantingLiking) })
+        Destination.StatsWantingLiking -> WantingLikingScreen(onBack = back, onBlock = { navigate(Destination.BlockDuration(it)) })
+        Destination.Setup -> SetupScreen(onBack = back)
         Destination.Appearance -> AppearanceScreen(onBack = back)
         Destination.Protection -> ProtectionScreen(
             onBack = back,

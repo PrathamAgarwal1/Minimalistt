@@ -101,6 +101,15 @@ data class FirstOpenEntity(
     @ColumnInfo(name = "early") val early: Boolean,
 )
 
+/** Steps, focus sessions and minutes earned on one day. */
+@Entity(tableName = "daily_earnings")
+data class DailyEarningEntity(
+    @PrimaryKey @ColumnInfo(name = "day") val day: Long,
+    @ColumnInfo(name = "steps") val steps: Int,
+    @ColumnInfo(name = "focus_sessions") val focusSessions: Int,
+    @ColumnInfo(name = "minutes") val minutes: Int,
+)
+
 /** One unlock of the phone. */
 @Entity(tableName = "pickups")
 data class PickupEntity(
