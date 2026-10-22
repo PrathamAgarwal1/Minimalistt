@@ -83,7 +83,8 @@ Minimalist, Lock) and make it the **default Home app** (Settings → Apps → De
 - **Home:** time, date and a quiet line (screen time, next alarm, battery: your choice), up to 6
   text-only favourites that change places every day, and Put away, Search and
   Urgent message. There is no app drawer: swipe up or tap Search and type.
-- **Long-press** an app in search to add it to favourites, hide it, or open app info. Long-press
+- **Long-press** an app on the home screen or in search to block it, add it to favourites, hide
+  it, or open app info. Long-press
   the clock for a quick menu: block an app, Put away, Stats, Settings, Setup and status.
 - **Search** finds Minimalist's own pages too (in the accent colour): type "block", "stats",
   "weekly", "night", "emergency" and so on.

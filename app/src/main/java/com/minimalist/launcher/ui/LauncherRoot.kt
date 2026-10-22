@@ -70,7 +70,10 @@ sealed interface Destination {
     data object FavouritePicker : Destination { override val parent = HomeApps }
     data object Blocking : Destination { override val parent = Settings }
     data object BlockPicker : Destination { override val parent = Blocking }
-    data class BlockDuration(val packageName: String) : Destination { override val parent = BlockPicker }
+    /** Back and done return to [returnTo]; from the block picker, done goes to Blocking. */
+    data class BlockDuration(val packageName: String, val returnTo: Destination = BlockPicker) : Destination {
+        override val parent get() = returnTo
+    }
     data object LimitPicker : Destination { override val parent = Blocking }
     data class LimitEdit(val packageName: String) : Destination { override val parent = Blocking }
     data class ScheduleEdit(val scheduleId: Long?) : Destination { override val parent = Blocking }
@@ -187,10 +190,12 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onOpenSetup = { navigate(Destination.Setup) },
             onBlockApp = { navigate(Destination.BlockPicker) },
             onOpenStats = { navigate(Destination.Stats) },
+            onBlock = { navigate(Destination.BlockDuration(it, returnTo = Destination.Home)) },
         )
         Destination.Search -> SearchScreen(
             onDone = { navigate(Destination.Home) },
             onOpen = navigate,
+            onBlock = { navigate(Destination.BlockDuration(it, returnTo = Destination.Home)) },
         )
         Destination.Settings -> SettingsScreen(
             onBack = back,
@@ -227,7 +232,7 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onOpenWeeklyReview = { navigate(Destination.WeeklyReview) },
         )
         Destination.WeeklyReview -> WeeklyReviewScreen(onClose = back)
-        Destination.StatsWantingLiking -> WantingLikingScreen(onBack = back, onBlock = { navigate(Destination.BlockDuration(it)) })
+        Destination.StatsWantingLiking -> WantingLikingScreen(onBack = back, onBlock = { navigate(Destination.BlockDuration(it, returnTo = Destination.StatsWantingLiking)) })
         Destination.Setup -> SetupScreen(onBack = back)
         Destination.Appearance -> AppearanceScreen(onBack = back)
         Destination.Protection -> ProtectionScreen(
@@ -311,7 +316,7 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
         }
         Destination.WantingLiking -> WantingLikingScreen(
             onBack = back,
-            onBlock = { navigate(Destination.BlockDuration(it)) },
+            onBlock = { navigate(Destination.BlockDuration(it, returnTo = Destination.WantingLiking)) },
         )
         Destination.BlockPicker -> AppPickerScreen(
             title = "Block an app",
@@ -322,7 +327,7 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
         is Destination.BlockDuration -> BlockDurationScreen(
             packageName = screen.packageName,
             onBack = back,
-            onDone = { navigate(Destination.Blocking) },
+            onDone = { navigate(if (screen.returnTo == Destination.BlockPicker) Destination.Blocking else screen.returnTo) },
         )
         Destination.LimitPicker -> AppPickerScreen(
             title = "Limit an app",

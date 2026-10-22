@@ -46,6 +46,7 @@ fun HomeScreen(
     onOpenSetup: () -> Unit = {},
     onBlockApp: () -> Unit = {},
     onOpenStats: () -> Unit = {},
+    onBlock: (String) -> Unit = {},
     viewModel: HomeViewModel = appViewModel { HomeViewModel(it) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -139,7 +140,8 @@ fun HomeScreen(
     optionsFor?.let { app ->
         OptionsDialog(
             title = app.label,
-            options = listOf(
+            options = listOfNotNull(
+                ("Block" to { onBlock(app.packageName) }).takeIf { viewModel.canBlock(app) },
                 "Remove from favourites" to { viewModel.removeFavourite(app) },
                 "Hide from search" to { viewModel.hide(app) },
                 "App info" to { viewModel.openAppInfo(app) },

@@ -94,6 +94,9 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     fun openAppInfo(app: LaunchableApp) = apps.openAppInfo(app)
 
+    /** Phone, messages, the clock and the like can never be blocked. */
+    fun canBlock(app: LaunchableApp) = !container.blockChecker.isProtected(app.packageName)
+
     fun removeFavourite(app: LaunchableApp) {
         viewModelScope.launch { apps.setFavourite(app, false) }
     }

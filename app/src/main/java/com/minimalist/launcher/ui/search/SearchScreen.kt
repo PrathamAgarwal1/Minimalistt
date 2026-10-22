@@ -53,6 +53,7 @@ private val SHORTCUTS = listOf(
 fun SearchScreen(
     onDone: () -> Unit,
     onOpen: (Destination) -> Unit,
+    onBlock: (String) -> Unit,
     viewModel: SearchViewModel = appViewModel { SearchViewModel(it) },
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -116,7 +117,8 @@ fun SearchScreen(
         val isFavourite = app.key in favouriteKeys
         OptionsDialog(
             title = app.label,
-            options = listOf(
+            options = listOfNotNull(
+                ("Block" to { onBlock(app.packageName) }).takeIf { viewModel.canBlock(app) },
                 (if (isFavourite) "Remove from favourites" else "Add to favourites") to { viewModel.setFavourite(app, !isFavourite) },
                 "Hide from search" to { viewModel.hide(app) },
                 "App info" to { viewModel.openAppInfo(app) },
