@@ -63,6 +63,25 @@ class EarnAndStatsTest {
         assertTrue(Earning.rulesWeaken(rules, rules.copy(focusMinutes = 15)))
         assertTrue(Earning.rulesWeaken(rules, rules.copy(minutesPerFocus = 10)))
         assertFalse(Earning.rulesWeaken(rules, rules.copy(stepsPerUnit = 2_000, minutesPerFocus = 5)))
+        assertTrue(Earning.rulesWeaken(rules, rules.copy(freeMinutes = 10)))
+        assertTrue(Earning.rulesWeaken(rules.copy(maxPerDay = 60), rules.copy(maxPerDay = 0)))
+        assertTrue(Earning.rulesWeaken(rules.copy(maxPerDay = 60), rules.copy(maxPerDay = 90)))
+        assertFalse(Earning.rulesWeaken(rules, rules.copy(maxPerDay = 60)))
+        assertFalse(Earning.rulesWeaken(rules.copy(maxPerDay = 60), rules.copy(maxPerDay = 30)))
+    }
+
+    @Test
+    fun freeMinutesAndDailyMost() {
+        assertEquals(20, Earning.earnedMinutes(0, 0, rules.copy(freeMinutes = 20)))
+        assertEquals(40, Earning.earnedMinutes(2_000, 0, rules.copy(freeMinutes = 20)))
+        assertEquals(30, Earning.earnedMinutes(9_000, 4, rules.copy(maxPerDay = 30)))
+        assertEquals(110, Earning.earnedMinutes(9_000, 4, rules))
+    }
+
+    @Test
+    fun typedValuesAreKeptSensible() {
+        val wild = EarnRules(stepsPerUnit = 5, minutesPerSteps = 0, focusMinutes = 1, minutesPerFocus = 999, freeMinutes = -3, maxPerDay = 5_000)
+        assertEquals(EarnRules(100, 1, 5, 120, 0, 600), Earning.sanitized(wild))
     }
 
     @Test

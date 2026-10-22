@@ -211,6 +211,7 @@ fun TextInputDialog(
     placeholder: String,
     onSave: (String) -> Unit,
     onDismiss: () -> Unit,
+    keyboardType: KeyboardType = KeyboardType.Text,
 ) {
     var value by remember { mutableStateOf(initial) }
     val focus = remember { FocusRequester() }
@@ -231,6 +232,7 @@ fun TextInputDialog(
                 modifier = Modifier.focusRequester(focus),
                 style = Type.body,
                 capitalization = KeyboardCapitalization.Sentences,
+                keyboardType = keyboardType,
                 onImeAction = {
                     onSave(value)
                     onDismiss()

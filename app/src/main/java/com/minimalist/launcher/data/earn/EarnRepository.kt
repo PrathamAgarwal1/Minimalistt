@@ -56,6 +56,8 @@ class EarnRepository(
         val minutesPerSteps = intPreferencesKey("earn_minutes_per_steps")
         val focusMinutes = intPreferencesKey("earn_focus_minutes")
         val minutesPerFocus = intPreferencesKey("earn_minutes_per_focus")
+        val freeMinutes = intPreferencesKey("earn_free_minutes")
+        val maxPerDay = intPreferencesKey("earn_max_per_day")
         val stepsDay = longPreferencesKey("steps_day")
         val stepsToday = intPreferencesKey("steps_today")
         val stepsLastReading = longPreferencesKey("steps_last_reading")
@@ -70,6 +72,8 @@ class EarnRepository(
                 minutesPerSteps = prefs[Keys.minutesPerSteps] ?: defaults.minutesPerSteps,
                 focusMinutes = prefs[Keys.focusMinutes] ?: defaults.focusMinutes,
                 minutesPerFocus = prefs[Keys.minutesPerFocus] ?: defaults.minutesPerFocus,
+                freeMinutes = prefs[Keys.freeMinutes] ?: defaults.freeMinutes,
+                maxPerDay = prefs[Keys.maxPerDay] ?: defaults.maxPerDay,
             ),
             steps = StepState(
                 day = prefs[Keys.stepsDay] ?: TrustedClock.today().toEpochDay(),
@@ -88,6 +92,8 @@ class EarnRepository(
         it[Keys.minutesPerSteps] = rules.minutesPerSteps
         it[Keys.focusMinutes] = rules.focusMinutes
         it[Keys.minutesPerFocus] = rules.minutesPerFocus
+        it[Keys.freeMinutes] = rules.freeMinutes
+        it[Keys.maxPerDay] = rules.maxPerDay
     }
 
     /** A reading from the step counter sensor. */

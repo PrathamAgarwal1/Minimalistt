@@ -111,6 +111,7 @@ Quiet, Lock) and make it the **default Home app** (Settings → Apps → Default
   accent colour and a notification appears; both lead to Setup and status to turn it back on.
 - **Websites** (Settings → Websites and browsers): a blocked app's site is blocked with it in
   Chrome, Brave, Edge and Firefox (incognito too); add your own; choose the one allowed browser.
+  Only real browsers count: apps that just open some links, like WPS Office, aren't blocked.
 - **Put away:** only calls, messages, the clock and your essentials work. Extend, never end early.
   It can start itself after unplugging, during study hours, or after too many pickups. A Put away
   run to its full focus length counts as a focus session.
@@ -123,7 +124,9 @@ Quiet, Lock) and make it the **default Home app** (Settings → Apps → Default
   Urgent message: pick a VIP, type, WhatsApp opens on their chat for a minute past any block;
   quick replies go through WhatsApp's own notification. There's no limit on how many you send.
 - **Earned screen time** (Settings → Earned screen time): chosen apps open only on time earned
-  by steps and focus sessions, with rules you set.
+  by steps and focus sessions. Every rule takes a preset or any number you type: steps per
+  reward, minutes earned, focus session length, minutes per session, free minutes to start each
+  day, and the most you can earn in a day.
 - **Stats** (Settings → Stats and export): today and the last 7 days, and an export of everything
   as CSV files in one zip, saved wherever you choose.
 - **Weekly review:** on Sunday from 18:00, once: this week's screen time against last week's, the

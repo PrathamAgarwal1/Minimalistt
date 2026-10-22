@@ -85,6 +85,8 @@ object ChangeCodec {
                 put("minutesPerSteps", change.rules.minutesPerSteps)
                 put("focusMinutes", change.rules.focusMinutes)
                 put("minutesPerFocus", change.rules.minutesPerFocus)
+                put("freeMinutes", change.rules.freeMinutes)
+                put("maxPerDay", change.rules.maxPerDay)
             }
             is Change.RemoveEarnedApp -> put("package", change.packageName)
             is Change.SetBlockedParts -> put("parts", JSONArray(change.parts.toList()))
@@ -119,7 +121,14 @@ object ChangeCodec {
             "SetFrictionBase" -> Change.SetFrictionBase(json.getInt("seconds"))
             "SetScrollCheck" -> Change.SetScrollCheck(json.getInt("minutes"))
             "SetEarnRules" -> Change.SetEarnRules(
-                EarnRules(json.getInt("stepsPerUnit"), json.getInt("minutesPerSteps"), json.getInt("focusMinutes"), json.getInt("minutesPerFocus")),
+                EarnRules(
+                    json.getInt("stepsPerUnit"),
+                    json.getInt("minutesPerSteps"),
+                    json.getInt("focusMinutes"),
+                    json.getInt("minutesPerFocus"),
+                    json.optInt("freeMinutes", 0),
+                    json.optInt("maxPerDay", 0),
+                ),
             )
             "RemoveEarnedApp" -> Change.RemoveEarnedApp(pkg!!)
             "SetBlockedParts" -> Change.SetBlockedParts(json.getJSONArray("parts").strings().toSet())

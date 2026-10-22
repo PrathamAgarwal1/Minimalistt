@@ -8,6 +8,10 @@ data class EarnRules(
     val minutesPerSteps: Int = 10,
     val focusMinutes: Int = 25,
     val minutesPerFocus: Int = 5,
+    /** Earned time every day starts with, before any walking or focus. */
+    val freeMinutes: Int = 0,
+    /** The most that can be earned in a day, free minutes included; 0 means no limit. */
+    val maxPerDay: Int = 0,
 )
 
 /** The step counter counts from boot; this keeps today's total across readings and reboots. */
@@ -19,11 +23,33 @@ object Earning {
     val STEP_MINUTE_OPTIONS = listOf(5, 10, 15)
     val FOCUS_OPTIONS = listOf(25, 45, 60)
     val FOCUS_MINUTE_OPTIONS = listOf(5, 10, 15)
+    val FREE_OPTIONS = listOf(0, 10, 20, 30)
+    val MAX_OPTIONS = listOf(0, 30, 60, 90)
+
+    // What a custom value may be.
+    val STEPS_RANGE = 100..20_000
+    val MINUTES_RANGE = 1..120
+    val FOCUS_RANGE = 5..240
+    val FREE_RANGE = 0..120
+    val MAX_RANGE = 0..600
+
+    /** Keeps typed-in values sensible. */
+    fun sanitized(rules: EarnRules) = rules.copy(
+        stepsPerUnit = rules.stepsPerUnit.coerceIn(STEPS_RANGE),
+        minutesPerSteps = rules.minutesPerSteps.coerceIn(MINUTES_RANGE),
+        focusMinutes = rules.focusMinutes.coerceIn(FOCUS_RANGE),
+        minutesPerFocus = rules.minutesPerFocus.coerceIn(MINUTES_RANGE),
+        freeMinutes = rules.freeMinutes.coerceIn(FREE_RANGE),
+        maxPerDay = rules.maxPerDay.coerceIn(MAX_RANGE),
+    )
 
     /** Minutes earned today. In test mode steps are worth a hundred times more. */
     fun earnedMinutes(steps: Int, focusSessions: Int, rules: EarnRules, scale: TimeScale = TimeScale.REAL): Int {
         val perUnit = if (scale.testMode) (rules.stepsPerUnit / 100).coerceAtLeast(1) else rules.stepsPerUnit.coerceAtLeast(1)
-        return (steps.coerceAtLeast(0) / perUnit) * rules.minutesPerSteps + focusSessions.coerceAtLeast(0) * rules.minutesPerFocus
+        val earned = rules.freeMinutes.coerceAtLeast(0) +
+            (steps.coerceAtLeast(0) / perUnit) * rules.minutesPerSteps +
+            focusSessions.coerceAtLeast(0) * rules.minutesPerFocus
+        return if (rules.maxPerDay > 0) earned.coerceAtMost(rules.maxPerDay) else earned
     }
 
     /** Put away sessions that lasted the focus length count as focus sessions (seconds in test mode). */
@@ -55,5 +81,7 @@ object Earning {
         new.stepsPerUnit < old.stepsPerUnit ||
             new.minutesPerSteps > old.minutesPerSteps ||
             new.focusMinutes < old.focusMinutes ||
-            new.minutesPerFocus > old.minutesPerFocus
+            new.minutesPerFocus > old.minutesPerFocus ||
+            new.freeMinutes > old.freeMinutes ||
+            (old.maxPerDay > 0 && (new.maxPerDay == 0 || new.maxPerDay > old.maxPerDay))
 }

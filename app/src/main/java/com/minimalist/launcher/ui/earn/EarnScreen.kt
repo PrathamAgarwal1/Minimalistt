@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.data.earn.EarnToday
@@ -35,6 +36,7 @@ import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.ScreenTitle
 import com.minimalist.launcher.ui.components.SectionHeader
 import com.minimalist.launcher.ui.components.TextAction
+import com.minimalist.launcher.ui.components.TextInputDialog
 import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Type
 import kotlinx.coroutines.delay
@@ -61,7 +63,7 @@ fun EarnScreen(onBack: () -> Unit, onAddApp: () -> Unit) {
         }
     }
     val rules = state.rules
-    fun setRules(next: com.minimalist.launcher.domain.earn.EarnRules) = container.changes.submit(Change.SetEarnRules(next))
+    fun setRules(next: com.minimalist.launcher.domain.earn.EarnRules) = container.changes.submit(Change.SetEarnRules(Earning.sanitized(next)))
 
     Screen {
         Spacer(Modifier.height(40.dp))
@@ -93,33 +95,65 @@ fun EarnScreen(onBack: () -> Unit, onAddApp: () -> Unit) {
             TextAction(text = "Add an app", onClick = onAddApp, modifier = Modifier.fillMaxWidth())
 
             SectionHeader("Walking")
-            FlowRow {
-                Earning.STEP_OPTIONS.forEach { steps ->
-                    Choice("%,d steps".format(steps), selected = rules.stepsPerUnit == steps, onClick = { setRules(rules.copy(stepsPerUnit = steps)) })
-                }
+            Label("Every", style = Type.small)
+            RuleRow(Earning.STEP_OPTIONS, rules.stepsPerUnit, { "%,d steps".format(it) }, Earning.STEPS_RANGE, "Steps") {
+                setRules(rules.copy(stepsPerUnit = it))
             }
-            FlowRow {
-                Label("earn ", style = Type.small)
-                Earning.STEP_MINUTE_OPTIONS.forEach { minutes ->
-                    Choice("$minutes min", selected = rules.minutesPerSteps == minutes, onClick = { setRules(rules.copy(minutesPerSteps = minutes)) })
-                }
+            Label("earns", style = Type.small)
+            RuleRow(Earning.STEP_MINUTE_OPTIONS, rules.minutesPerSteps, { "$it min" }, Earning.MINUTES_RANGE, "Minutes") {
+                setRules(rules.copy(minutesPerSteps = it))
             }
 
             SectionHeader("Focus")
             Label("A Put away that runs its full length counts as a focus session.", style = Type.small)
-            FlowRow {
-                Earning.FOCUS_OPTIONS.forEach { minutes ->
-                    Choice("$minutes min", selected = rules.focusMinutes == minutes, onClick = { setRules(rules.copy(focusMinutes = minutes)) })
-                }
+            Label("A session of", style = Type.small)
+            RuleRow(Earning.FOCUS_OPTIONS, rules.focusMinutes, { "$it min" }, Earning.FOCUS_RANGE, "Minutes") {
+                setRules(rules.copy(focusMinutes = it))
             }
-            FlowRow {
-                Label("earns ", style = Type.small)
-                Earning.FOCUS_MINUTE_OPTIONS.forEach { minutes ->
-                    Choice("$minutes min", selected = rules.minutesPerFocus == minutes, onClick = { setRules(rules.copy(minutesPerFocus = minutes)) })
-                }
+            Label("earns", style = Type.small)
+            RuleRow(Earning.FOCUS_MINUTE_OPTIONS, rules.minutesPerFocus, { "$it min" }, Earning.MINUTES_RANGE, "Minutes") {
+                setRules(rules.copy(minutesPerFocus = it))
+            }
+
+            SectionHeader("Every day")
+            Label("Start the day with", style = Type.small)
+            RuleRow(Earning.FREE_OPTIONS, rules.freeMinutes, { if (it == 0) "Nothing" else "$it min" }, Earning.FREE_RANGE, "Minutes") {
+                setRules(rules.copy(freeMinutes = it))
+            }
+            Label("Earn at most", style = Type.small)
+            RuleRow(Earning.MAX_OPTIONS, rules.maxPerDay, { if (it == 0) "No limit" else "$it min" }, Earning.MAX_RANGE, "Minutes, 0 for no limit") {
+                setRules(rules.copy(maxPerDay = it))
             }
             Label("Making earning easier waits out the cooldown; making it harder applies now.", style = Type.small)
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+/** The presets, plus Custom, which takes any number in [range]. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RuleRow(
+    options: List<Int>,
+    value: Int,
+    text: (Int) -> String,
+    range: IntRange,
+    unit: String,
+    onPick: (Int) -> Unit,
+) {
+    var asking by remember { mutableStateOf(false) }
+    FlowRow {
+        options.forEach { option -> Choice(text(option), selected = value == option, onClick = { onPick(option) }) }
+        Choice(if (value in options) "Custom" else "Custom: ${text(value)}", selected = value !in options, onClick = { asking = true })
+    }
+    if (asking) {
+        TextInputDialog(
+            title = "$unit, ${range.first} to ${"%,d".format(range.last)}",
+            initial = value.toString(),
+            placeholder = "${range.first}",
+            onSave = { typed -> typed.filter(Char::isDigit).toIntOrNull()?.let { onPick(it.coerceIn(range)) } },
+            onDismiss = { asking = false },
+            keyboardType = KeyboardType.Number,
+        )
     }
 }
