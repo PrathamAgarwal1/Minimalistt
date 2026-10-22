@@ -12,14 +12,18 @@ Work happens in phases. **Done:**
 4. Put away, morning and night modes
 5. Held notifications, batching, VIPs, urgent WhatsApp and quick reply
 6. Website blocking and the single allowed browser
+7a. Unlock challenges, 24-hour cooldowns, letters, emergency unlock, Settings guard, Device Admin
 
-Next: new-app quarantine and anti-cheat, earned screen time and stats, the setup wizard.
+Next: the night and morning rework (7b), earned screen time and stats, the setup wizard.
 
 ## Get the APK
 
-On the phone, open this link. It downloads the newest build straight away, with no zip:
+On the phone, open one of these links. They download the newest build straight away, with no zip:
 
-**https://github.com/PrathamAgarwal1/Minimalistt/releases/download/latest-debug/minimalist-debug.apk**
+- **Everyday:** https://github.com/PrathamAgarwal1/Minimalistt/releases/download/latest-debug/minimalist.apk
+- **Testing (test mode, adb reset):** https://github.com/PrathamAgarwal1/Minimalistt/releases/download/latest-debug/minimalist-debug.apk
+
+Both are signed with the same key, so either installs over the other and keeps your data.
 
 Bookmark it or add it to the home screen of your browser. Every push replaces the file at the
 same link, about four minutes after the push. The release page shows which build it is:
@@ -75,8 +79,22 @@ All of them are optional; each feature says what it needs on its settings page.
 - **ColorOS background limits**: Settings → Apps → Minimalist → allow auto-launch and
   *Allow background activity* in Battery, so the guard service isn't stopped.
 
-While a mode runs, Android Settings stays reachable on purpose until the emergency unlock
-exists (phase 7), so a mode can never lock you out of the phone.
+## Getting in early, and loosening things
+
+- **Unlock challenges:** a blocked app, site, Put away or a mode can be opened early only by
+  solving problems (more and harder the longer the block has left). You get a 5, 15 or 30-minute
+  pass; the block keeps its end time.
+- **Cooldown:** removing or loosening anything waits 24 hours, after one of your letters to
+  yourself is shown. Adding or extending applies at once. Settings → Protection lists what's
+  waiting.
+- **Emergency unlock:** lifts everything for 15 minutes, once a calendar month.
+- **Settings guard:** while anything is protected, Android Settings stays usable except
+  Minimalist's own pages, accessibility, notification access, Device Admin, uninstalling,
+  Date & time and Developer options. During modes and challenges all of Settings is closed.
+- **Uninstall protection:** Settings → Protection → turn on (Device Admin).
+
+Known gaps: safe mode turns every downloaded app off, and the debug build's adb reset clears
+everything. Use the everyday build when you mean it.
 
 ## Debug tools (debug builds only)
 
