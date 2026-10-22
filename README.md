@@ -1,8 +1,8 @@
 # Minimalist
 
 A minimalist Android home screen with strong, friction-based app and website blocking, built
-for one phone (Oppo Reno 14, ColorOS 16, Android 16) and sideloaded. No internet permission:
-everything stays on the device.
+for ColorOS 16 on Android 16 and sideloaded. No internet permission: everything stays on the
+device.
 
 All nine build phases are done:
 
