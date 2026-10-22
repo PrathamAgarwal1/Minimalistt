@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Minimalistt"
+rootProject.name = "Quiet"
 include(":app")

@@ -21,11 +21,11 @@ All nine build phases are done:
 
 On the phone, open one of these links. They download the newest build straight away, with no zip:
 
-- **Everyday:** https://github.com/PrathamAgarwal1/Minimalistt/releases/download/latest-debug/minimalist.apk
-- **Testing (test mode, adb reset):** https://github.com/PrathamAgarwal1/Minimalistt/releases/download/latest-debug/minimalist-debug.apk
+- **Everyday:** https://github.com/PrathamAgarwal1/Quiet/releases/download/latest-debug/quiet.apk
+- **Testing (test mode, adb reset):** https://github.com/PrathamAgarwal1/Quiet/releases/download/latest-debug/quiet-debug.apk
 
 Every push to GitHub rebuilds both, about four minutes later, at the same links. The release
-page shows which build they are: https://github.com/PrathamAgarwal1/Minimalistt/releases/tag/latest-debug
+page shows which build they are: https://github.com/PrathamAgarwal1/Quiet/releases/tag/latest-debug
 
 Each GitHub Actions run (**Actions → Build debug APK**) also keeps both APKs as the
 `launcher-debug-apk` artifact, a zip.
@@ -49,7 +49,7 @@ they come from a browser, chat app or file manager. The dialog has no install bu
   offers to remove Quiet, keep it. Repeat for each update.
 - **Use adb (Play Protect stays on):** enable Developer options (Settings → About device →
   Version → tap Build number 7 times), turn on USB debugging, then run
-  `adb install -r minimalist.apk`. `-r` updates in place and keeps your data. Apps installed this
+  `adb install -r quiet.apk`. `-r` updates in place and keeps your data. Apps installed this
   way are also spared the restricted-settings step below.
 
 ### Allow restricted settings (Android 16)
