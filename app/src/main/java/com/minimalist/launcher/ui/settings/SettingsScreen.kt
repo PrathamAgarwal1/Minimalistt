@@ -45,6 +45,7 @@ fun SettingsScreen(
     onOpenEarn: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenSetup: () -> Unit,
+    onOpenWeeklyReview: () -> Unit,
     viewModel: SettingsViewModel = appViewModel { SettingsViewModel(it) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -65,24 +66,26 @@ fun SettingsScreen(
         Spacer(Modifier.height(40.dp))
         ScreenTitle("Settings", onBack)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            SectionHeader("Blocking")
-            TextAction(
-                text = "Blocks, schedules and limits",
-                onClick = onOpenBlocking,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            SectionHeader("Focus")
+            TextAction(text = "Blocking, schedules and limits", onClick = onOpenBlocking, modifier = Modifier.fillMaxWidth())
             if (!BlockerService.isEnabled(context)) {
-                Label("Blocking is off. Open the page above to turn it on.", style = Type.small)
+                Label("Blocking is off. Open the page above to turn it on.", style = Type.small.copy(color = Palette.Accent))
             }
-
-            TextAction(text = "Put away and night", onClick = onOpenModes, modifier = Modifier.fillMaxWidth())
-            TextAction(text = "Notifications and VIPs", onClick = onOpenNotifications, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Websites and browsers", onClick = onOpenWebsites, modifier = Modifier.fillMaxWidth())
-            TextAction(text = "Protection, letters and emergency", onClick = onOpenProtection, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Earned screen time", onClick = onOpenEarn, modifier = Modifier.fillMaxWidth())
+
+            SectionHeader("Modes")
+            TextAction(text = "Put away, night and wind-down", onClick = onOpenModes, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Notifications and VIPs", onClick = onOpenNotifications, modifier = Modifier.fillMaxWidth())
+
+            SectionHeader("You")
             TextAction(text = "Stats and export", onClick = onOpenStats, modifier = Modifier.fillMaxWidth())
-            TextAction(text = "Appearance", onClick = onOpenAppearance, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Weekly review", onClick = onOpenWeeklyReview, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Emergency unlock, letters and waiting changes", onClick = onOpenProtection, modifier = Modifier.fillMaxWidth())
+
+            SectionHeader("Phone")
             TextAction(text = "Setup and status", onClick = onOpenSetup, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Appearance", onClick = onOpenAppearance, modifier = Modifier.fillMaxWidth())
 
             SectionHeader("Home app")
             if (isHome) {

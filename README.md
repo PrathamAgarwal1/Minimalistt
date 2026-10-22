@@ -84,11 +84,21 @@ Minimalist, Lock) and make it the **default Home app** (Settings → Apps → De
   intention, up to 6 text-only favourites that change places every day, and Put away, Search and
   Urgent message. There is no app drawer: swipe up or tap Search and type.
 - **Long-press** an app in search to add it to favourites, hide it, or open app info. Long-press
-  the clock, or search "launcher settings", for settings.
+  the clock for a quick menu: block an app, Put away, Stats, Settings, Setup and status.
+- **Search** finds Minimalist's own pages too (in the accent colour): type "block", "stats",
+  "weekly", "night", "emergency" and so on.
+- **Settings** is grouped: Focus (blocking, websites, earned time), Modes (Put away, night,
+  notifications), You (stats, weekly review, emergency and letters) and Phone (setup, appearance,
+  Home app, favourites, hidden apps).
 - **Blocking** (Settings → Blocking): block an app for hours to months, schedules (e.g.
   22:00–08:00, or class hours on weekdays), daily limits on time or opens, and friction for apps
   that are allowed but slowed down. Phone, emergency calls, SMS, the clock, the keyboard, this
   launcher and the Play Store can never be blocked.
+- **Parts of apps** (Settings → Blocking): block Instagram Reels and YouTube Shorts and keep the
+  rest of each app. Opening one steps back with a short note; going straight back in within a few
+  seconds sends you home. Unblocking a part waits out the cooldown.
+- **If blocking gets switched off** (ColorOS sometimes does this), the home screen says so in the
+  accent colour and a notification appears; both lead to Setup and status to turn it back on.
 - **Websites** (Settings → Websites and browsers): a blocked app's site is blocked with it in
   Chrome, Brave, Edge and Firefox (incognito too); add your own; choose the one allowed browser.
 - **Put away:** only calls, messages, the clock and your essentials work. Extend, never end early.
@@ -107,6 +117,9 @@ Minimalist, Lock) and make it the **default Home app** (Settings → Apps → De
   by steps and focus sessions, with rules you set.
 - **Stats** (Settings → Stats and export): today and the last 7 days, and an export of everything
   as CSV files in one zip, saved wherever you choose.
+- **Weekly review:** on Sunday from 18:00, once: this week's screen time against last week's, the
+  best and worst day, urges resisted, Put away time and early unlocks, and the app you want most
+  but enjoy least, with "Block it for a week". Also under Stats.
 - **Appearance:** text size, accent colour, clock weight, centred or left-aligned home.
 
 ## Getting in early, and loosening things
@@ -120,7 +133,13 @@ Minimalist, Lock) and make it the **default Home app** (Settings → Apps → De
 - **Cooldown:** removing or loosening anything waits 24 hours, after one of your letters to
   yourself is shown. Adding or extending applies at once. Settings → Protection lists what's
   waiting.
-- **Emergency unlock:** lifts everything for 15 minutes, once a calendar month, logged.
+- **Emergency unlock:** lifts everything for 15 minutes, logged. Three a calendar month are free;
+  each one after that needs a challenge of 15 hard problems and a typing passage, two more
+  problems for every extra one already used that month.
+- **Changing the clock** doesn't end anything early: blocks, passes, modes and cooldowns run on
+  time measured since the phone started, and a clock moved by more than a few seconds is
+  ignored. Restarting the phone accepts its clock again, but only forwards from the last time
+  Minimalist saw.
 - **Settings guard:** while anything is protected, Android Settings stays usable except
   Minimalist's own pages, accessibility, notification access, Device Admin, uninstalling,
   Date & time and Developer options. During modes and challenges all of Settings is closed.
@@ -146,7 +165,7 @@ adb shell am broadcast -a com.minimalist.launcher.DEBUG_RESET -p com.minimalist.
 **Test mode** (Settings → Blocking → Debug build) shrinks everything: an hour of a block becomes
 a second; minutes of limits, sessions, Put away and the emergency unlock become seconds; passes
 last six seconds per minute; challenges are one easy problem; the cooldown is a minute; the
-monthly emergency unlock comes back after an hour. Turning test mode on is itself a loosening
+free emergency unlocks reset every hour and an extra one is one easy problem. Turning test mode on is itself a loosening
 change, so run the reset first to switch it on straight away. Neither exists in the everyday build.
 
 ## Build locally

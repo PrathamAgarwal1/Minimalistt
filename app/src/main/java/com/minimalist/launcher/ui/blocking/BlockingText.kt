@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.blocking
 
+import com.minimalist.launcher.system.TrustedClock
 import com.minimalist.launcher.domain.blocking.AppLimit
 import com.minimalist.launcher.domain.blocking.Schedule
 import com.minimalist.launcher.domain.blocking.ScheduleRules
@@ -49,6 +50,6 @@ internal object BlockingText {
         val zone = ZoneId.systemDefault()
         val time = Instant.ofEpochMilli(millis).atZone(zone)
         val clock = time.format(DateTimeFormatter.ofPattern("HH:mm"))
-        return if (time.toLocalDate() == LocalDate.now(zone)) "until $clock" else "until ${time.format(DateTimeFormatter.ofPattern("EEE d MMM"))}, $clock"
+        return if (time.toLocalDate() == TrustedClock.today()) "until $clock" else "until ${time.format(DateTimeFormatter.ofPattern("EEE d MMM"))}, $clock"
     }
 }

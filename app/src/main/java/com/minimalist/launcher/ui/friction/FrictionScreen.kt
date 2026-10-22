@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.friction
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -60,7 +61,7 @@ fun FrictionScreen(notice: Notice.Friction) {
             opensToday = opens,
             scale = container.timeScale.value,
             baseSeconds = modes.frictionBaseSeconds,
-            windDown = DayModes.windDownUntil(modes.dayModes, java.time.ZonedDateTime.now()) != null,
+            windDown = DayModes.windDownUntil(modes.dayModes, java.time.TrustedClock.zonedNow()) != null,
         )
     }
     BackHandler(onBack = ::notNow)

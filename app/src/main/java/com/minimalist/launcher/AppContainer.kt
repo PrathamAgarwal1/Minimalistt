@@ -1,5 +1,6 @@
 package com.minimalist.launcher
 
+import com.minimalist.launcher.system.TrustedClock
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -30,6 +31,7 @@ import com.minimalist.launcher.domain.blocking.BlockDecision
 import com.minimalist.launcher.domain.blocking.BlockReason
 import com.minimalist.launcher.domain.blocking.TimeScale
 import com.minimalist.launcher.domain.challenge.NightRules
+import com.minimalist.launcher.domain.protection.EmergencyRules
 import com.minimalist.launcher.domain.modes.ActiveLock
 import com.minimalist.launcher.domain.modes.DayModes
 import com.minimalist.launcher.domain.modes.LockKind
@@ -79,7 +81,7 @@ class AppContainer(context: Context) {
 
     val protectedApps = ProtectedApps(appContext)
 
-    val friction = FrictionRepository(database, applicationScope)
+    val friction = FrictionRepository(appContext, database, applicationScope)
 
     val modes = ModesRepository(appContext.modesDataStore, database, applicationScope)
 
@@ -88,9 +90,6 @@ class AppContainer(context: Context) {
     }
 
     val browsers = Browsers(appContext)
-
-    /** Short-lived permissions to open an app whatever blocks it, e.g. WhatsApp for an urgent message. */
-    private val passes = ConcurrentHashMap<String, Long>()
 
     val earn = EarnRepository(appContext.modesDataStore, database, usage, applicationScope)
 
@@ -115,9 +114,7 @@ class AppContainer(context: Context) {
         protectedApps = protectedApps,
         timeScale = timeScale,
         phoneState = ::phoneState,
-        hasPass = { packageName ->
-            (passes[packageName] ?: 0L) > System.currentTimeMillis() || unlocks.hasPass(UnlockTarget.App(packageName))
-        },
+        hasPass = { packageName -> unlocks.hasPass(UnlockTarget.App(packageName)) },
         earnedLeft = { packageName -> earn.leftFor(packageName, timeScale.value) },
     )
 
@@ -144,7 +141,7 @@ class AppContainer(context: Context) {
 
     fun currentLock(): ActiveLock? {
         val state = modes.state.value
-        return DayModes.activeLock(state.putAwayUntil, state.nightReleasedUntil, state.dayModes, ZonedDateTime.now())
+        return DayModes.activeLock(state.putAwayUntil, state.nightReleasedUntil, state.dayModes, TrustedClock.zonedNow())
     }
 
     /**
@@ -171,7 +168,7 @@ class AppContainer(context: Context) {
 
     /** The lock that limits apps right now: a running challenge, else a mode without a pass. */
     fun effectiveLock(): ActiveLock? {
-        val now = System.currentTimeMillis()
+        val now = TrustedClock.nowMillis()
         if (challengeRunning.value) return ActiveLock(LockKind.Challenge, now + CHALLENGE_LOCK_MILLIS)
         if (unlocks.hasPass(UnlockTarget.Lock, now)) return null
         return currentLock()
@@ -184,7 +181,7 @@ class AppContainer(context: Context) {
         if (emergencyActive()) return false
         val rules = blocking.rules.value
         val state = modes.state.value
-        val now = System.currentTimeMillis()
+        val now = TrustedClock.nowMillis()
         return currentLock() != null ||
             rules.blocks.values.any { it > now } ||
             rules.schedules.any { it.enabled } ||
@@ -198,10 +195,10 @@ class AppContainer(context: Context) {
 
     /** Minimalist is sending you to a Settings page to switch something on. */
     fun grantSettingsPass() {
-        settingsPassUntil = System.currentTimeMillis() + SETTINGS_PASS_MILLIS
+        settingsPassUntil = TrustedClock.nowMillis() + SETTINGS_PASS_MILLIS
     }
 
-    fun hasSettingsPass(): Boolean = settingsPassUntil > System.currentTimeMillis()
+    fun hasSettingsPass(): Boolean = settingsPassUntil > TrustedClock.nowMillis()
 
     private fun phoneState(): PhoneState {
         if (emergencyActive()) return PhoneState()
@@ -227,7 +224,8 @@ class AppContainer(context: Context) {
         unlockRequest.value = UnlockRequest(
             target = target,
             label = blocked.label,
-            timeLeftMillis = blocked.decision.untilMillis - System.currentTimeMillis(),
+            // Reels and Shorts never end on their own; size their challenge like an hour's block.
+            timeLeftMillis = if (primary is BlockReason.Part) PART_UNLOCK_SIZE_MILLIS else blocked.decision.untilMillis - TrustedClock.nowMillis(),
             openPackage = blocked.packageName,
         )
     }
@@ -238,7 +236,7 @@ class AppContainer(context: Context) {
      */
     fun requestUnlock(lock: ActiveLock) {
         applicationScope.launch(Dispatchers.Main.immediate) {
-            val now = ZonedDateTime.now()
+            val now = TrustedClock.zonedNow()
             val nowMillis = now.toInstant().toEpochMilli()
             val window = if (lock.kind == LockKind.Night) DayModes.night(modes.state.value.dayModes, now) else null
             val night = window?.let {
@@ -268,13 +266,14 @@ class AppContainer(context: Context) {
             val night = request.night
             val opensAt = request.nightOpensAt
             when {
+                request.emergencyPlan != null -> unlocks.useEmergency(timeScale.value, earned = true)
                 night != null && night.opensMorning && opensAt != null -> {
                     unlocks.grantChallengePass(
                         UnlockTarget.Lock, reason, problems,
-                        Duration.ofMillis((opensAt - System.currentTimeMillis()).coerceAtLeast(0)),
+                        Duration.ofMillis((opensAt - TrustedClock.nowMillis()).coerceAtLeast(0)),
                         kind = UnlockRepository.MORNING,
                     )
-                    modes.releaseNight(opensAt, java.time.LocalDate.now().toEpochDay())
+                    modes.releaseNight(opensAt, TrustedClock.today().toEpochDay())
                 }
                 night != null -> unlocks.grantChallengePass(
                     UnlockTarget.Lock, reason, problems, timeScale.value.pass(night.passMinutes), kind = UnlockRepository.NIGHT,
@@ -292,9 +291,22 @@ class AppContainer(context: Context) {
         unlockRequest.value = null
     }
 
-    /** Lifts everything for 15 minutes, once a calendar month. */
-    suspend fun useEmergency(): Boolean {
-        val used = unlocks.useEmergency(timeScale.value)
+    /** Past the three free emergency unlocks a month, the next one is a hard challenge away. */
+    suspend fun requestEmergencyChallenge() {
+        val used = unlocks.emergenciesUsed(timeScale.value)
+        notice.value = null
+        unlockRequest.value = UnlockRequest(
+            target = UnlockTarget.All,
+            label = "Emergency unlock",
+            timeLeftMillis = Long.MAX_VALUE,
+            openPackage = null,
+            emergencyPlan = EmergencyRules.extraPlan(used, timeScale.value),
+        )
+    }
+
+    /** Lifts everything for 15 minutes. Three a month are free. */
+    suspend fun useEmergency(earned: Boolean = false): Boolean {
+        val used = unlocks.useEmergency(timeScale.value, earned)
         if (used) {
             notice.value = null
             abandonUnlock()
@@ -302,9 +314,6 @@ class AppContainer(context: Context) {
         return used
     }
 
-    fun grantPass(packageName: String, millis: Long) {
-        passes[packageName] = System.currentTimeMillis() + millis
-    }
 
     /**
      * Opens WhatsApp on [vip]'s chat with [text] typed in, past any block or mode, for one minute.
@@ -319,7 +328,7 @@ class AppContainer(context: Context) {
         val intent = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         whatsapp?.let {
             intent.setPackage(it)
-            grantPass(it, URGENT_PASS_MILLIS)
+            unlocks.grantUrgentPass(it, Duration.ofMillis(URGENT_PASS_MILLIS))
         }
         notifications.logUrgent(vip, currentLock()?.kind?.name)
         return runCatching { appContext.startActivity(intent) }.isSuccess
@@ -385,8 +394,7 @@ class AppContainer(context: Context) {
     suspend fun resetAll() {
         blocking.clearEverything()
         friction.clear()
-        modes.endAllModes(DayModes.nightUntil(modes.state.value.dayModes, ZonedDateTime.now())?.toInstant()?.toEpochMilli())
-        passes.clear()
+        modes.endAllModes(DayModes.nightUntil(modes.state.value.dayModes, TrustedClock.zonedNow())?.toInstant()?.toEpochMilli())
         unlocks.endAllPasses()
         changes.clearPending()
         challengeRunning.value = false
@@ -405,5 +413,6 @@ class AppContainer(context: Context) {
         private const val SETTINGS_PASS_MILLIS = 90_000L
         private const val LOCK_REFRESH_MILLIS = 3_000L
         private const val URGENT_PASS_MILLIS = 60_000L
+        private const val PART_UNLOCK_SIZE_MILLIS = 3_600_000L
     }
 }

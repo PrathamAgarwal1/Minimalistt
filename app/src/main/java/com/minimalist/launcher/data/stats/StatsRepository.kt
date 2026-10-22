@@ -1,5 +1,6 @@
 package com.minimalist.launcher.data.stats
 
+import com.minimalist.launcher.system.TrustedClock
 import com.minimalist.launcher.data.db.AppDatabase
 import com.minimalist.launcher.data.db.FirstOpenEntity
 import com.minimalist.launcher.domain.modes.LockKind
@@ -20,7 +21,7 @@ class StatsRepository(database: AppDatabase, private val ownPackage: String) {
         val zone = ZoneId.systemDefault()
         val from = LocalDate.ofEpochDay(fromDay).atStartOfDay(zone).toInstant().toEpochMilli()
         val to = LocalDate.ofEpochDay(toDay + 1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val now = System.currentTimeMillis()
+        val now = TrustedClock.nowMillis()
         val usage = dao.usage(fromDay, toDay, ownPackage)
         val putAways = dao.modes(LockKind.PutAway.name, from, to).map { it.startedAt to it.endedAt }
         return StatsSummary(

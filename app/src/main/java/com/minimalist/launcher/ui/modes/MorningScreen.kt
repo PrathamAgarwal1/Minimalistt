@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.modes
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -38,7 +39,7 @@ import java.time.ZoneId
 fun MorningScreen() {
     val container = appContainer()
     val scope = rememberCoroutineScope()
-    val today = remember { LocalDate.now().toEpochDay() }
+    val today = remember { TrustedClock.today().toEpochDay() }
     val intention by container.settings.intention.collectAsStateWithLifecycle(null)
     val habits by remember { container.modes.habitsToday() }.collectAsStateWithLifecycle(emptyList())
     val held by remember { container.notifications.held }.collectAsStateWithLifecycle(emptyList())

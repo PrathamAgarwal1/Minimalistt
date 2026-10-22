@@ -1,5 +1,6 @@
 package com.minimalist.launcher.data.blocking
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.room.withTransaction
 import com.minimalist.launcher.data.db.AppBlockEntity
 import com.minimalist.launcher.data.db.AppDatabase
@@ -34,7 +35,7 @@ class BlockingRepository(
     }.stateIn(scope, SharingStarted.Eagerly, BlockRules.NONE)
 
     /** Adds [duration] to whatever is left of the app's block. Returns the new end time. */
-    suspend fun extendBlock(packageName: String, duration: Duration, nowMillis: Long = System.currentTimeMillis()): Long =
+    suspend fun extendBlock(packageName: String, duration: Duration, nowMillis: Long = TrustedClock.nowMillis()): Long =
         database.withTransaction {
             dao.deleteExpiredBlocks(nowMillis)
             val until = BlockEngine.extendedUntil(dao.getBlock(packageName)?.untilMillis, nowMillis, duration)
@@ -67,7 +68,7 @@ class BlockingRepository(
         dao.clearBlocks()
         dao.clearSchedules()
         dao.clearLimits()
-        database.usageDao().clearDay(LocalDate.now().toEpochDay())
+        database.usageDao().clearDay(TrustedClock.today().toEpochDay())
     }
 
     private fun ScheduleEntity.toDomain() = Schedule(

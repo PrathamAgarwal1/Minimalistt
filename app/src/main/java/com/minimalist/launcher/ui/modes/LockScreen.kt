@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.modes
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -60,10 +61,10 @@ fun LockScreen(lock: ActiveLock, onUrgent: () -> Unit) {
 
 @Composable
 private fun LockScreenContent(lock: ActiveLock, onUrgent: () -> Unit) {
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(TrustedClock.nowMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
-            now = System.currentTimeMillis()
+            now = TrustedClock.nowMillis()
             delay(1_000)
         }
     }
@@ -103,7 +104,7 @@ private fun PutAwayLock(left: String, until: String, onUrgent: () -> Unit) {
 private fun NightLock(left: String, opensAtMillis: Long, onUrgent: () -> Unit) {
     val container = appContainer()
     val scope = rememberCoroutineScope()
-    val day = remember { LocalDate.now().toEpochDay() }
+    val day = remember { TrustedClock.today().toEpochDay() }
     val since = remember { FrictionRepository.startOfToday() }
     val screenTime by remember { container.usage.totalForegroundToday(container.appContext.packageName) }.collectAsStateWithLifecycle(0L)
     val resisted by remember { container.friction.resistedSince(since) }.collectAsStateWithLifecycle(0)

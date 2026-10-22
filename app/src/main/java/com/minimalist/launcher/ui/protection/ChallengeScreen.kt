@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.protection
 
+import com.minimalist.launcher.system.TrustedClock
 import android.os.PowerManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -72,7 +73,8 @@ fun ChallengeScreen(request: UnlockRequest) {
 
     LaunchedEffect(request) {
         recent = container.unlocks.earlyUnlocksPastWeek()
-        plan = request.night?.plan ?: ChallengeRules.forBlock(request.timeLeftMillis, recent, container.timeScale.value)
+        plan = request.emergencyPlan ?: request.night?.plan
+            ?: ChallengeRules.forBlock(request.timeLeftMillis, recent, container.timeScale.value)
     }
 
     fun restart(message: String) {
@@ -89,11 +91,11 @@ fun ChallengeScreen(request: UnlockRequest) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_STOP -> {
-                    stoppedAt = System.currentTimeMillis()
+                    stoppedAt = TrustedClock.nowMillis()
                     leftForAnotherApp = context.getSystemService(PowerManager::class.java).isInteractive
                 }
                 Lifecycle.Event.ON_START -> {
-                    val away = System.currentTimeMillis() - stoppedAt
+                    val away = TrustedClock.nowMillis() - stoppedAt
                     if (stoppedAt > 0 && session != null && (leftForAnotherApp || away > SCREEN_OFF_GRACE_MILLIS)) {
                         restart("You left the challenge, so it starts over with new problems.")
                     }
@@ -155,6 +157,7 @@ private fun Intro(
 ) {
     val night = request.night
     val title = when {
+        request.emergencyPlan != null -> "Another emergency unlock"
         night?.opensMorning == true -> "Open your phone early"
         night != null -> "A pass through the night"
         else -> when (request.target) {
@@ -172,7 +175,9 @@ private fun Intro(
         Spacer(Modifier.height(16.dp))
         if (plan != null) {
             Label("${plan.count} ${if (plan.count == 1) "problem" else "problems"}" + describe(plan), style = Type.body)
-            if (night != null && !night.opensMorning) {
+            if (request.emergencyPlan != null) {
+                Label("This month's three free emergency unlocks are used. Each extra one costs 2 more problems.", style = Type.small)
+            } else if (night != null && !night.opensMorning) {
                 Label("Harder the later it gets, and 2 more for each pass already used tonight.", style = Type.small)
             } else if (recent > 0) {
                 Label("Includes ${recent * ChallengeRules.EXTRA_PER_RECENT_UNLOCK} extra for $recent early ${if (recent == 1) "unlock" else "unlocks"} this week.", style = Type.small)
@@ -185,6 +190,7 @@ private fun Intro(
         )
         SectionHeader("Pass")
         when {
+            request.emergencyPlan != null -> Label("Everything opens for 15 minutes.", style = Type.body)
             night?.opensMorning == true -> Label("Solving it opens your phone for the rest of the morning.", style = Type.body)
             night != null -> Label("${night.passMinutes} minutes, then night mode carries on.", style = Type.body)
             else -> {

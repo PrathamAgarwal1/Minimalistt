@@ -34,6 +34,7 @@ sealed interface Change {
     data class SetFrictionBase(val seconds: Int) : Change
     data class SetEarnRules(val rules: EarnRules) : Change
     data class RemoveEarnedApp(val packageName: String) : Change
+    data class SetBlockedParts(val parts: Set<String>) : Change
 }
 
 /** Stores a queued change as JSON so it survives restarts until its cooldown ends. */
@@ -86,6 +87,7 @@ object ChangeCodec {
                 put("minutesPerFocus", change.rules.minutesPerFocus)
             }
             is Change.RemoveEarnedApp -> put("package", change.packageName)
+            is Change.SetBlockedParts -> put("parts", JSONArray(change.parts.toList()))
         }
     }.toString()
 
@@ -120,6 +122,7 @@ object ChangeCodec {
                 EarnRules(json.getInt("stepsPerUnit"), json.getInt("minutesPerSteps"), json.getInt("focusMinutes"), json.getInt("minutesPerFocus")),
             )
             "RemoveEarnedApp" -> Change.RemoveEarnedApp(pkg!!)
+            "SetBlockedParts" -> Change.SetBlockedParts(json.getJSONArray("parts").strings().toSet())
             else -> null
         }
     }.getOrNull()

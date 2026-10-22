@@ -1,5 +1,6 @@
 package com.minimalist.launcher.modes
 
+import com.minimalist.launcher.system.TrustedClock
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -26,6 +27,7 @@ import com.minimalist.launcher.AppContainer
 import com.minimalist.launcher.MainActivity
 import com.minimalist.launcher.MinimalistApp
 import com.minimalist.launcher.R
+import com.minimalist.launcher.blocking.BlockerService
 import com.minimalist.launcher.domain.DurationFormat
 import com.minimalist.launcher.domain.modes.ActiveLock
 import com.minimalist.launcher.domain.modes.DayModes
@@ -49,6 +51,7 @@ class GuardService : Service(), SensorEventListener {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var tint: View? = null
     private var lastStatus: String? = null
+    private var warnedBlockingOff = false
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -115,10 +118,11 @@ class GuardService : Service(), SensorEventListener {
     private suspend fun refresh() {
         val lock = container.currentLock()
         val config = container.modes.state.value.dayModes
-        val evening = lock?.kind == LockKind.Night || DayModes.windDownUntil(config, ZonedDateTime.now()) != null
+        val evening = lock?.kind == LockKind.Night || DayModes.windDownUntil(config, TrustedClock.zonedNow()) != null
         val calm = evening && !container.emergencyActive()
         if (calm && config.redTint && Settings.canDrawOverlays(this)) showTint() else removeTint()
         updateGrayscale(calm && config.grayscale)
+        warnIfBlockingOff()
         val status = statusText(lock)
         if (status != lastStatus) {
             lastStatus = status
@@ -154,10 +158,38 @@ class GuardService : Service(), SensorEventListener {
         }
     }
 
+    /** If ColorOS (or anyone) switches the blocking service off, say so once. */
+    private fun warnIfBlockingOff() {
+        val off = !BlockerService.isEnabled(this) && container.protectionActive()
+        val manager = getSystemService(NotificationManager::class.java)
+        if (off && !warnedBlockingOff && manager.areNotificationsEnabled()) {
+            manager.notify(
+                BLOCKING_OFF_ID,
+                Notification.Builder(this, SUMMARY_CHANNEL)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentTitle("Blocking is off")
+                    .setContentText("Minimalist blocking was switched off, so nothing is blocked. Tap to turn it back on.")
+                    .setContentIntent(
+                        PendingIntent.getActivity(
+                            this,
+                            BLOCKING_OFF_ID,
+                            Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, MainActivity.OPEN_SETUP),
+                            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                        ),
+                    )
+                    .setAutoCancel(true)
+                    .build(),
+            )
+        } else if (!off && warnedBlockingOff) {
+            manager.cancel(BLOCKING_OFF_ID)
+        }
+        warnedBlockingOff = off
+    }
+
     private fun postBedtimeReminder(bedtimeMillis: Long) {
         val manager = getSystemService(NotificationManager::class.java)
         if (!manager.areNotificationsEnabled()) return
-        val minutes = ((bedtimeMillis - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1)
+        val minutes = ((bedtimeMillis - TrustedClock.nowMillis()) / 60_000L).coerceAtLeast(1)
         val time = java.time.Instant.ofEpochMilli(bedtimeMillis).atZone(java.time.ZoneId.systemDefault())
         val clock = "%02d:%02d".format(time.hour, time.minute)
         manager.notify(
@@ -172,7 +204,7 @@ class GuardService : Service(), SensorEventListener {
     }
 
     private fun statusText(lock: ActiveLock?): String =
-        lock?.let { "${it.kind.label} · ${DurationFormat.remaining(it.untilMillis - System.currentTimeMillis())} left" }
+        lock?.let { "${it.kind.label} · ${DurationFormat.remaining(it.untilMillis - TrustedClock.nowMillis())} left" }
             ?: "Keeping your modes on time"
 
     private fun statusNotification(lock: ActiveLock?): Notification =
@@ -216,6 +248,7 @@ class GuardService : Service(), SensorEventListener {
         private const val TICK_MILLIS = 15_000L
         private const val STATUS_ID = 1
         private const val REMINDER_ID = 3
+        private const val BLOCKING_OFF_ID = 4
         private const val STEP_BATCH_MICROS = 60_000_000
         private const val TINT_COLOR = 0xFF6B1A00.toInt()
         const val STATUS_CHANNEL = "status"

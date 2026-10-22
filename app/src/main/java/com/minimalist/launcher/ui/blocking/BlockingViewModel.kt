@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.blocking
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minimalist.launcher.AppContainer
@@ -24,7 +25,7 @@ data class LimitRow(val label: String, val limit: AppLimit)
 data class FrictionRow(val packageName: String, val label: String)
 
 data class BlockingState(
-    val nowMillis: Long = System.currentTimeMillis(),
+    val nowMillis: Long = TrustedClock.nowMillis(),
     val friction: List<FrictionRow> = emptyList(),
     val blocks: List<BlockRow> = emptyList(),
     val schedules: List<ScheduleRow> = emptyList(),
@@ -38,7 +39,7 @@ class BlockingViewModel(private val container: AppContainer) : ViewModel() {
 
     private val seconds = flow {
         while (true) {
-            emit(System.currentTimeMillis())
+            emit(TrustedClock.nowMillis())
             delay(1_000)
         }
     }
@@ -63,7 +64,7 @@ class BlockingViewModel(private val container: AppContainer) : ViewModel() {
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BlockingState())
 
-    fun blockUntil(packageName: String): Long? = blocking.rules.value.blocks[packageName]?.takeIf { it > System.currentTimeMillis() }
+    fun blockUntil(packageName: String): Long? = blocking.rules.value.blocks[packageName]?.takeIf { it > TrustedClock.nowMillis() }
 
     fun limitFor(packageName: String): AppLimit? = blocking.rules.value.limits[packageName]
 

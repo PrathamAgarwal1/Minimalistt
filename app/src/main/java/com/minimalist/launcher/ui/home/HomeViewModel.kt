@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.home
 
+import com.minimalist.launcher.system.TrustedClock
 import android.app.AlarmManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -37,6 +38,8 @@ data class Glance(
     val screenTimeMillis: Long? = null,
     val nextAlarm: LocalDateTime? = null,
     val battery: BatteryState? = null,
+    /** Something is set to be blocked, but the blocking service is off. */
+    val blockingOff: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -64,6 +67,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault())
                 },
                 battery = battery,
+                blockingOff = !BlockerService.isEnabled(container.appContext) && container.protectionActive(),
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Glance())
@@ -103,6 +107,6 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun setIntention(text: String) {
-        viewModelScope.launch { settings.setIntention(text, LocalDate.now().toEpochDay()) }
+        viewModelScope.launch { settings.setIntention(text, TrustedClock.today().toEpochDay()) }
     }
 }

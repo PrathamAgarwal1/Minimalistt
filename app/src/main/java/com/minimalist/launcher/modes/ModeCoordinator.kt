@@ -1,5 +1,6 @@
 package com.minimalist.launcher.modes
 
+import com.minimalist.launcher.system.TrustedClock
 import com.minimalist.launcher.AppContainer
 import com.minimalist.launcher.data.protection.UnlockTarget
 import com.minimalist.launcher.domain.modes.DayModes
@@ -25,7 +26,7 @@ class ModeCoordinator(private val container: AppContainer) {
     suspend fun tick() = lock.withLock { tickLocked() }
 
     suspend fun onUserPresent() = lock.withLock {
-        val now = ZonedDateTime.now()
+        val now = TrustedClock.zonedNow()
         val nowMillis = now.toInstant().toEpochMilli()
         val state = modes.state.value
         val recent = modes.recordPickup(nowMillis)
@@ -40,7 +41,7 @@ class ModeCoordinator(private val container: AppContainer) {
 
     suspend fun onPowerDisconnected() = lock.withLock {
         val minutes = modes.state.value.unplugMinutes
-        if (minutes > 0) putAwayFor(minutes, System.currentTimeMillis())
+        if (minutes > 0) putAwayFor(minutes, TrustedClock.nowMillis())
         tickLocked()
     }
 
@@ -57,7 +58,7 @@ class ModeCoordinator(private val container: AppContainer) {
     }
 
     private suspend fun tickLocked() {
-        val now = ZonedDateTime.now()
+        val now = TrustedClock.zonedNow()
         val nowMillis = now.toInstant().toEpochMilli()
         val state = modes.state.value
 

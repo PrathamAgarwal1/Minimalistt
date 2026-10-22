@@ -1,5 +1,6 @@
 package com.minimalist.launcher.blocking
 
+import com.minimalist.launcher.system.TrustedClock
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.BroadcastReceiver
@@ -14,7 +15,10 @@ import com.minimalist.launcher.MinimalistApp
 import com.minimalist.launcher.data.blocking.Notice
 import com.minimalist.launcher.domain.blocking.BlockDecision
 import com.minimalist.launcher.domain.blocking.BlockReason
+import com.minimalist.launcher.data.protection.UnlockTarget
+import com.minimalist.launcher.domain.parts.AppParts
 import com.minimalist.launcher.domain.websites.BrowserBars
+import android.widget.Toast
 import com.minimalist.launcher.system.HomeRole
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -38,6 +42,7 @@ class BlockerService : AccessibilityService() {
         data object ScreenOff : Event
         data class CheckAddress(val packageName: String) : Event
         data class CheckSettings(val packageName: String) : Event
+        data class CheckParts(val packageName: String) : Event
     }
 
     private lateinit var container: AppContainer
@@ -45,6 +50,8 @@ class BlockerService : AccessibilityService() {
     private val events = Channel<Event>(Channel.UNLIMITED)
     private var addressCheck: Job? = null
     private var settingsCheck: Job? = null
+    private var partsCheck: Job? = null
+    private var lastPartBack = 0L
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -94,6 +101,15 @@ class BlockerService : AccessibilityService() {
             settingsCheck = scope.launch {
                 delay(SETTINGS_SETTLE_MILLIS)
                 events.trySend(Event.CheckSettings(packageName))
+            }
+        }
+        // Reels and Shorts: look for their screens inside otherwise allowed apps.
+        // A playing video changes the screen constantly, so this checks at most every 350 ms
+        // instead of waiting for it to settle.
+        if (packageName in AppParts.PACKAGES && partsCheck?.isActive != true) {
+            partsCheck = scope.launch {
+                delay(PARTS_SETTLE_MILLIS)
+                events.trySend(Event.CheckParts(packageName))
             }
         }
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -150,7 +166,7 @@ class BlockerService : AccessibilityService() {
                 }
                 // The chosen session length is up.
                 val session = container.friction.sessionFor(packageName)
-                if (session != null && session.endsAtMillis <= System.currentTimeMillis()) {
+                if (session != null && session.endsAtMillis <= TrustedClock.nowMillis()) {
                     container.friction.endSession(packageName)
                     sendHome(Notice.WorthIt(session.logId, packageName, container.labelFor(packageName)))
                 }
@@ -162,6 +178,28 @@ class BlockerService : AccessibilityService() {
                 val root = rootInActiveWindow ?: return
                 if (root.packageName?.toString() != event.packageName) return
                 if (SettingsGuard.isGuarded(SettingsGuard.visibleText(root))) sendHome(Notice.SettingsClosed)
+            }
+            is Event.CheckParts -> {
+                if (usage.currentPackage != event.packageName) return
+                val blocked = container.modes.state.value.blockedParts
+                if (blocked.isEmpty() || container.unlocks.hasPass(UnlockTarget.App(event.packageName))) return
+                val root = rootInActiveWindow ?: return
+                if (root.packageName?.toString() != event.packageName) return
+                val ids = AppParts.ALL.filter { it.packageName == event.packageName }.flatMap { it.viewIds }
+                val visible = ids.filter { root.findAccessibilityNodeInfosByViewId(it).isNotEmpty() }.toSet()
+                val part = AppParts.showing(event.packageName, blocked, visible) ?: return
+                val now = TrustedClock.nowMillis()
+                if (now - lastPartBack > PART_RETRY_MILLIS) {
+                    // First a step back, which usually leaves Reels or Shorts and keeps you in the app.
+                    lastPartBack = now
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    Toast.makeText(this, "${part.label} are blocked", Toast.LENGTH_SHORT).show()
+                } else {
+                    val app = container.labelFor(event.packageName)
+                    sendHome(
+                        Notice.Blocked(event.packageName, app, BlockDecision.Blocked(listOf(BlockReason.Part(part.label, app)))),
+                    )
+                }
             }
             is Event.CheckAddress -> {
                 if (usage.currentPackage != event.packageName) return
@@ -208,6 +246,8 @@ class BlockerService : AccessibilityService() {
         private const val TICK_MILLIS = 5_000L
         private const val ADDRESS_SETTLE_MILLIS = 400L
         private const val SETTINGS_SETTLE_MILLIS = 300L
+        private const val PARTS_SETTLE_MILLIS = 350L
+        private const val PART_RETRY_MILLIS = 4_000L
 
         fun isEnabled(context: Context): Boolean =
             context.getSystemService(AccessibilityManager::class.java)

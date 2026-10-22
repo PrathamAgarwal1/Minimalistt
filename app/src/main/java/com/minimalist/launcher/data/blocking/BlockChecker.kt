@@ -1,5 +1,6 @@
 package com.minimalist.launcher.data.blocking
 
+import com.minimalist.launcher.system.TrustedClock
 import com.minimalist.launcher.domain.blocking.BlockDecision
 import com.minimalist.launcher.domain.blocking.BlockEngine
 import com.minimalist.launcher.domain.blocking.TimeScale
@@ -31,7 +32,7 @@ class BlockChecker(
     /** [includePhoneState] false asks about the app's own rules only, ignoring modes and browsers. */
     suspend fun check(packageName: String, atOpen: Boolean, includePhoneState: Boolean = true): BlockDecision {
         if (isProtected(packageName) || hasPass(packageName)) return BlockDecision.Allowed
-        val now = ZonedDateTime.now()
+        val now = TrustedClock.zonedNow()
         val phone = if (includePhoneState) phoneState() else PhoneState()
         return BlockEngine.evaluate(
             packageName = packageName,

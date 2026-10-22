@@ -1,5 +1,6 @@
 package com.minimalist.launcher.data.earn
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -28,7 +29,7 @@ data class EarnState(
     /** Apps that open only while there is earned time left. */
     val apps: Set<String> = emptySet(),
     val rules: EarnRules = EarnRules(),
-    val steps: StepState = StepState(LocalDate.now().toEpochDay(), 0, null),
+    val steps: StepState = StepState(TrustedClock.today().toEpochDay(), 0, null),
 )
 
 /** Today's balance for the earned-time apps. */
@@ -71,7 +72,7 @@ class EarnRepository(
                 minutesPerFocus = prefs[Keys.minutesPerFocus] ?: defaults.minutesPerFocus,
             ),
             steps = StepState(
-                day = prefs[Keys.stepsDay] ?: LocalDate.now().toEpochDay(),
+                day = prefs[Keys.stepsDay] ?: TrustedClock.today().toEpochDay(),
                 stepsToday = prefs[Keys.stepsToday] ?: 0,
                 lastReading = prefs[Keys.stepsLastReading],
             ),
@@ -91,7 +92,7 @@ class EarnRepository(
 
     /** A reading from the step counter sensor. */
     suspend fun onStepReading(reading: Long) = lock.withLock {
-        val today = LocalDate.now().toEpochDay()
+        val today = TrustedClock.today().toEpochDay()
         val next = Earning.afterReading(state.value.steps, reading, today)
         dataStore.edit {
             it[Keys.stepsDay] = next.day
@@ -100,12 +101,12 @@ class EarnRepository(
         }
     }
 
-    fun stepsToday(): Int = state.value.steps.takeIf { it.day == LocalDate.now().toEpochDay() }?.stepsToday ?: 0
+    fun stepsToday(): Int = state.value.steps.takeIf { it.day == TrustedClock.today().toEpochDay() }?.stepsToday ?: 0
 
     suspend fun today(scale: TimeScale): EarnToday {
         val current = state.value
-        val dayStart = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val now = System.currentTimeMillis()
+        val dayStart = TrustedClock.today().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val now = TrustedClock.nowMillis()
         val putAways = stats.modes(LockKind.PutAway.name, dayStart, now + 1)
             .filter { it.startedAt >= dayStart && it.endedAt != null }
             .map { it.startedAt to (it.endedAt ?: it.startedAt) }
@@ -123,6 +124,6 @@ class EarnRepository(
     /** Keeps today's row in the stats table current. */
     suspend fun saveToday(scale: TimeScale) {
         val today = today(scale)
-        stats.upsertEarning(DailyEarningEntity(LocalDate.now().toEpochDay(), today.steps, today.focusSessions, today.earnedMinutes))
+        stats.upsertEarning(DailyEarningEntity(TrustedClock.today().toEpochDay(), today.steps, today.focusSessions, today.earnedMinutes))
     }
 }

@@ -28,14 +28,14 @@ import com.minimalist.launcher.ui.theme.Spacing
 import com.minimalist.launcher.ui.theme.Type
 import kotlinx.coroutines.launch
 
-/** A quiet "Emergency unlock" action with its own confirmation. Works once a calendar month. */
+/** "Emergency unlock": three a month come free; past that, a hard challenge for each one. */
 @Composable
 fun EmergencyUnlockAction(style: TextStyle = Type.small, alignment: Alignment = Alignment.CenterStart) {
     val container = appContainer()
     val scope = rememberCoroutineScope()
     var asking by remember { mutableStateOf(false) }
-    var available by remember { mutableStateOf<Boolean?>(null) }
-    LaunchedEffect(asking) { available = container.unlocks.emergencyAvailable(container.timeScale.value) }
+    var freeLeft by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(asking) { freeLeft = EmergencyRules.freeLeft(container.unlocks.emergenciesUsed(container.timeScale.value)) }
 
     TextAction(text = "Emergency unlock", onClick = { asking = true }, style = style, alignment = alignment)
     if (!asking) return
@@ -49,12 +49,18 @@ fun EmergencyUnlockAction(style: TextStyle = Type.small, alignment: Alignment = 
         ) {
             Label("Emergency unlock", style = Type.title)
             Spacer(Modifier.height(8.dp))
-            when (available) {
-                true -> {
-                    Label(
-                        "Lifts every block and mode for ${EmergencyRules.MINUTES} minutes. You get one each calendar month, and it's logged.",
-                        style = Type.body,
-                    )
+            Label("Lifts every block and mode for ${EmergencyRules.MINUTES} minutes. It's logged.", style = Type.body)
+            when (val left = freeLeft) {
+                null -> Unit
+                0 -> {
+                    Label("This month's ${EmergencyRules.FREE_PER_MONTH} free ones are used. Another takes a hard challenge.", style = Type.small)
+                    TextAction(text = "Solve problems for another", onClick = {
+                        asking = false
+                        scope.launch { container.requestEmergencyChallenge() }
+                    })
+                }
+                else -> {
+                    Label("$left of ${EmergencyRules.FREE_PER_MONTH} free left this month.", style = Type.small)
                     TextAction(text = "Unlock for ${EmergencyRules.MINUTES} minutes", onClick = {
                         scope.launch {
                             container.useEmergency()
@@ -62,8 +68,6 @@ fun EmergencyUnlockAction(style: TextStyle = Type.small, alignment: Alignment = 
                         }
                     })
                 }
-                false -> Label("This month's emergency unlock is already used. A new one comes on the 1st.", style = Type.body)
-                null -> Unit
             }
             TextAction(text = "Cancel", onClick = { asking = false }, style = Type.small)
         }

@@ -1,10 +1,12 @@
 package com.minimalist.launcher.data.protection
 
+import com.minimalist.launcher.system.TrustedClock
 import com.minimalist.launcher.AppContainer
 import com.minimalist.launcher.data.db.LetterEntity
 import com.minimalist.launcher.data.db.PendingChangeEntity
 import com.minimalist.launcher.domain.blocking.ScheduleRules
 import com.minimalist.launcher.domain.earn.Earning
+import com.minimalist.launcher.domain.parts.AppParts
 import com.minimalist.launcher.domain.protection.Protection
 import com.minimalist.launcher.ui.blocking.BlockingText
 import kotlinx.coroutines.flow.Flow
@@ -44,7 +46,7 @@ class ChangeGate(private val container: AppContainer) {
 
     /** The letter was read: start the cooldown. */
     suspend fun confirm(request: ChangeRequest) {
-        val now = System.currentTimeMillis()
+        val now = TrustedClock.nowMillis()
         dao.insertPending(
             PendingChangeEntity(
                 description = request.description,
@@ -64,7 +66,7 @@ class ChangeGate(private val container: AppContainer) {
 
     /** Applies every queued change whose cooldown is over. Safe to call often. */
     suspend fun applyDue() = applyLock.withLock {
-        dao.duePending(System.currentTimeMillis()).forEach { pending ->
+        dao.duePending(TrustedClock.nowMillis()).forEach { pending ->
             ChangeCodec.decode(pending.payload)?.let { apply(it) }
             dao.deletePending(pending.id)
         }
@@ -73,7 +75,7 @@ class ChangeGate(private val container: AppContainer) {
     suspend fun clearPending() = dao.clearPending()
 
     suspend fun writeLetter(text: String) {
-        if (text.isNotBlank()) dao.insertLetter(LetterEntity(text = text.trim(), writtenAt = System.currentTimeMillis()))
+        if (text.isNotBlank()) dao.insertLetter(LetterEntity(text = text.trim(), writtenAt = TrustedClock.nowMillis()))
     }
 
     suspend fun deleteLetter(id: Long) = dao.deleteLetter(id)
@@ -82,7 +84,7 @@ class ChangeGate(private val container: AppContainer) {
         val rules = container.blocking.rules.value
         val modes = container.modes.state.value
         return when (change) {
-            is Change.RemoveBlock -> (rules.blocks[change.packageName] ?: 0L) > System.currentTimeMillis()
+            is Change.RemoveBlock -> (rules.blocks[change.packageName] ?: 0L) > TrustedClock.nowMillis()
             is Change.SaveLimit -> Protection.limitWeakens(rules.limits[change.limit.packageName], change.limit.takeIf { it.maxMinutes != null || it.maxOpens != null })
             is Change.RemoveLimit -> rules.limits.containsKey(change.packageName)
             is Change.SaveSchedule -> Protection.scheduleWeakens(rules.schedules.firstOrNull { it.id == change.schedule.id && change.schedule.id != 0L }, change.schedule)
@@ -105,6 +107,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetFrictionBase -> Protection.frictionBaseWeakens(modes.frictionBaseSeconds, change.seconds)
             is Change.SetEarnRules -> Earning.rulesWeaken(container.earn.state.value.rules, change.rules)
             is Change.RemoveEarnedApp -> change.packageName in container.earn.state.value.apps
+            is Change.SetBlockedParts -> AppParts.weakens(modes.blockedParts, change.parts)
         }
     }
 
@@ -134,6 +137,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetFrictionBase -> modes.setFrictionBase(change.seconds)
             is Change.SetEarnRules -> container.earn.setRules(change.rules)
             is Change.RemoveEarnedApp -> container.earn.removeApp(change.packageName)
+            is Change.SetBlockedParts -> modes.setBlockedParts(change.parts)
         }
     }
 
@@ -172,6 +176,9 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetFrictionBase -> "Start friction countdowns at ${change.seconds} s"
             is Change.SetEarnRules -> "Make earning screen time easier"
             is Change.RemoveEarnedApp -> "Let ${label(change.packageName)} open without earned time"
+            is Change.SetBlockedParts -> "Unblock " + AppParts.ALL
+                .filter { it.key in container.modes.state.value.blockedParts && it.key !in change.parts }
+                .joinToString { it.label }
         }
     }
 }

@@ -21,20 +21,37 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.domain.AppSearch
 import com.minimalist.launcher.domain.LaunchableApp
+import com.minimalist.launcher.ui.Destination
 import com.minimalist.launcher.ui.appViewModel
 import com.minimalist.launcher.ui.components.InputField
 import com.minimalist.launcher.ui.components.Label
 import com.minimalist.launcher.ui.components.OptionsDialog
 import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.TextAction
+import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Type
 
-private const val LAUNCHER_SETTINGS = "Launcher settings"
+/** Minimalist's own pages, found by name like apps are. */
+private val SHORTCUTS = listOf(
+    "Minimalist settings" to Destination.Settings,
+    "Blocking" to Destination.Blocking,
+    "Block an app" to Destination.BlockPicker,
+    "Put away" to Destination.PutAway,
+    "Night and wind-down" to Destination.Modes,
+    "Notifications" to Destination.Notifications,
+    "Websites" to Destination.Websites,
+    "Stats" to Destination.Stats,
+    "Weekly review" to Destination.WeeklyReview,
+    "Earned screen time" to Destination.Earn,
+    "Emergency unlock and letters" to Destination.Protection,
+    "Appearance" to Destination.Appearance,
+    "Setup and status" to Destination.Setup,
+)
 
 @Composable
 fun SearchScreen(
     onDone: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onOpen: (Destination) -> Unit,
     viewModel: SearchViewModel = appViewModel { SearchViewModel(it) },
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -52,7 +69,9 @@ fun SearchScreen(
     DisposableEffect(Unit) { onDispose { viewModel.reset() } }
 
     val normalized = AppSearch.normalize(query)
-    val showSettingsEntry = normalized.length >= 3 && AppSearch.score(AppSearch.normalize(LAUNCHER_SETTINGS), normalized) != null
+    val shortcuts = if (normalized.length < 3) emptyList() else SHORTCUTS.filter { (label, _) ->
+        (AppSearch.score(AppSearch.normalize(label), normalized) ?: Int.MAX_VALUE) <= 1
+    }
 
     fun launch(app: LaunchableApp) {
         viewModel.launch(app)
@@ -81,10 +100,13 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            if (showSettingsEntry) {
-                item(key = LAUNCHER_SETTINGS) {
-                    TextAction(text = LAUNCHER_SETTINGS, onClick = onOpenSettings, style = Type.item, modifier = Modifier.fillMaxWidth())
-                }
+            items(shortcuts, key = { "shortcut:" + it.first }) { (label, destination) ->
+                TextAction(
+                    text = label,
+                    onClick = { onOpen(destination) },
+                    style = Type.item.copy(color = Palette.Accent),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

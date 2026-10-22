@@ -1,5 +1,6 @@
 package com.minimalist.launcher.data.modes
 
+import com.minimalist.launcher.system.TrustedClock
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
@@ -43,6 +44,12 @@ data class ModesState(
     val grayscaleByUs: Boolean = false,
     val dayModes: DayModeConfig = DayModeConfig(),
     val frictionBaseSeconds: Int = 5,
+    /** Keys of [com.minimalist.launcher.domain.parts.AppParts] that are blocked, e.g. Reels. */
+    val blockedParts: Set<String> = emptySet(),
+    /** When the weekly review was last shown. */
+    val lastReviewAt: Long? = null,
+    /** False until the stored values have been read. */
+    val loaded: Boolean = false,
     /** Put away after unplugging from USB, for this many minutes. 0 is off. */
     val unplugMinutes: Int = 0,
     /** Put away after this many pickups in an hour. 0 is off. */
@@ -86,6 +93,8 @@ class ModesRepository(
         val redTint = booleanPreferencesKey("red_tint")
         val reminderMinutes = intPreferencesKey("reminder_minutes")
         val frictionBase = intPreferencesKey("friction_base_seconds")
+        val blockedParts = stringSetPreferencesKey("blocked_parts")
+        val lastReviewAt = longPreferencesKey("last_review_at")
         val unplugMinutes = intPreferencesKey("unplug_minutes")
         val pickupThreshold = intPreferencesKey("pickup_threshold")
         val pickupMinutes = intPreferencesKey("pickup_minutes")
@@ -121,6 +130,9 @@ class ModesRepository(
                 reminderMinutes = prefs[Keys.reminderMinutes] ?: defaults.dayModes.reminderMinutes,
             ),
             frictionBaseSeconds = prefs[Keys.frictionBase] ?: defaults.frictionBaseSeconds,
+            blockedParts = prefs[Keys.blockedParts] ?: emptySet(),
+            lastReviewAt = prefs[Keys.lastReviewAt],
+            loaded = true,
             unplugMinutes = prefs[Keys.unplugMinutes] ?: defaults.unplugMinutes,
             pickupThreshold = prefs[Keys.pickupThreshold] ?: defaults.pickupThreshold,
             pickupMinutes = prefs[Keys.pickupMinutes] ?: defaults.pickupMinutes,
@@ -138,7 +150,7 @@ class ModesRepository(
     }.stateIn(scope, SharingStarted.Eagerly, ModesState())
 
     /** Starts Put away, or adds to the time left. It never ends early. */
-    suspend fun putAway(duration: Duration, nowMillis: Long = System.currentTimeMillis()) {
+    suspend fun putAway(duration: Duration, nowMillis: Long = TrustedClock.nowMillis()) {
         dataStore.edit { it[Keys.putAwayUntil] = DayModes.extendPutAway(it[Keys.putAwayUntil], nowMillis, duration) }
     }
 
@@ -168,6 +180,10 @@ class ModesRepository(
     suspend fun setGrayscaleByUs(byUs: Boolean) = edit { it[Keys.grayscaleByUs] = byUs }
 
     suspend fun setFrictionBase(seconds: Int) = edit { it[Keys.frictionBase] = seconds }
+
+    suspend fun setBlockedParts(parts: Set<String>) = edit { it[Keys.blockedParts] = parts }
+
+    suspend fun setLastReviewAt(millis: Long) = edit { it[Keys.lastReviewAt] = millis }
 
     suspend fun setStudyHandledUntil(millis: Long) = edit { it[Keys.studyHandledUntil] = millis }
 
@@ -271,10 +287,10 @@ class ModesRepository(
     }
 
     /** Last night's "tomorrow's first task", offered as this morning's intention. */
-    suspend fun yesterdaysFirstTask(): String? = dao.reflection(LocalDate.now().minusDays(1).toEpochDay())?.firstTask
+    suspend fun yesterdaysFirstTask(): String? = dao.reflection(TrustedClock.today().minusDays(1).toEpochDay())?.firstTask
 
     fun habitsToday(): Flow<List<Pair<HabitEntity, Boolean>>> {
-        val day = LocalDate.now().toEpochDay()
+        val day = TrustedClock.today().toEpochDay()
         return combine(dao.observeHabits(), dao.observeChecks(day)) { habits, checks ->
             habits.map { it to (it.id in checks) }
         }
@@ -287,7 +303,7 @@ class ModesRepository(
     suspend fun deleteHabit(id: Long) = dao.deleteHabit(id)
 
     suspend fun setHabitDone(id: Long, done: Boolean) {
-        val day = LocalDate.now().toEpochDay()
+        val day = TrustedClock.today().toEpochDay()
         if (done) dao.check(day, id) else dao.uncheck(day, id)
     }
 

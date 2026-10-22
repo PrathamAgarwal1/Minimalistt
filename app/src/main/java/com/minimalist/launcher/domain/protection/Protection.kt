@@ -4,6 +4,7 @@ import com.minimalist.launcher.domain.blocking.AppLimit
 import com.minimalist.launcher.domain.blocking.Schedule
 import com.minimalist.launcher.domain.blocking.ScheduleRules
 import com.minimalist.launcher.domain.blocking.TimeScale
+import com.minimalist.launcher.domain.challenge.ChallengePlan
 import com.minimalist.launcher.domain.modes.DayModeConfig
 import com.minimalist.launcher.domain.modes.StudyWindow
 import java.time.YearMonth
@@ -99,14 +100,27 @@ object Protection {
     fun testModeWeakens(new: Boolean): Boolean = new
 }
 
-/** One emergency unlock per calendar month (per hour in test mode). */
+/**
+ * Three emergency unlocks per calendar month (per hour in test mode) come free. Past that,
+ * each one costs a hard challenge, two problems harder for every extra one already used.
+ */
 object EmergencyRules {
 
     const val MINUTES = 15
+    const val FREE_PER_MONTH = 3
 
-    fun available(previousUnlocks: List<Long>, nowMillis: Long, zone: ZoneId, scale: TimeScale): Boolean {
-        if (scale.testMode) return previousUnlocks.none { it > nowMillis - 3_600_000L }
+    fun usedThisPeriod(previousUnlocks: List<Long>, nowMillis: Long, zone: ZoneId, scale: TimeScale): Int {
+        if (scale.testMode) return previousUnlocks.count { it > nowMillis - 3_600_000L }
         val month = YearMonth.from(Instant.ofEpochMilli(nowMillis).atZone(zone))
-        return previousUnlocks.none { YearMonth.from(Instant.ofEpochMilli(it).atZone(zone)) == month }
+        return previousUnlocks.count { YearMonth.from(Instant.ofEpochMilli(it).atZone(zone)) == month }
+    }
+
+    fun freeLeft(used: Int): Int = (FREE_PER_MONTH - used).coerceAtLeast(0)
+
+    /** The challenge for an emergency unlock beyond the free ones. */
+    fun extraPlan(used: Int, scale: TimeScale): ChallengePlan {
+        if (scale.testMode) return ChallengePlan(easy = 1)
+        val extraAlready = (used - FREE_PER_MONTH).coerceAtLeast(0)
+        return ChallengePlan(hard = 15, passage = true).plus(2 * extraAlready)
     }
 }

@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.block
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -41,11 +42,11 @@ private const val URGE_WAVE_SECONDS = 60
 /** Shown in place of a blocked app. Calm, never scolding. */
 @Composable
 fun BlockScreen(notice: Notice.Blocked, onClose: () -> Unit, onUrgeRidden: () -> Unit = {}, onUnlockEarly: () -> Unit = {}) {
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(TrustedClock.nowMillis()) }
     var riding by remember(notice) { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (true) {
-            now = System.currentTimeMillis()
+            now = TrustedClock.nowMillis()
             delay(1_000)
         }
     }
@@ -130,6 +131,7 @@ private fun reasonText(reason: BlockReason): String = when (reason) {
     is BlockReason.OpenLimit -> "You've opened it ${reason.maxOpens} ${if (reason.maxOpens == 1) "time" else "times"} today, your limit. It opens again at midnight."
     is BlockReason.Locked -> "${reason.kind.label} is on. Only calls, messages and your essentials work ${BlockingText.until(reason.untilMillis)}."
     is BlockReason.OtherBrowser -> "Only ${reason.allowedLabel} is allowed for browsing."
+    is BlockReason.Part -> "${reason.label} are blocked. The rest of ${reason.appLabel} works."
     is BlockReason.EarnedUp -> "Today's earned time is used up. Walk, or finish a focus session, to earn more."
     is BlockReason.Website ->
         if (reason.untilMillis == Long.MAX_VALUE) {

@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.protection
 
+import com.minimalist.launcher.system.TrustedClock
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -47,10 +48,10 @@ fun PendingChangesScreen(onBack: () -> Unit) {
     val container = appContainer()
     val scope = rememberCoroutineScope()
     val pending by remember { container.changes.pending }.collectAsStateWithLifecycle(emptyList())
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(TrustedClock.nowMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
-            now = System.currentTimeMillis()
+            now = TrustedClock.nowMillis()
             container.changes.applyDue()
             delay(1_000)
         }

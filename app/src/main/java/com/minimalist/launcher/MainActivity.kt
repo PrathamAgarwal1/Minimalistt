@@ -56,5 +56,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN = "open"
         const val OPEN_HELD = "held"
+        const val OPEN_SETUP = "setup"
     }
 }

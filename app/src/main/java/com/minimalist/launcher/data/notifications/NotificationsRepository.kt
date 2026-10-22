@@ -1,5 +1,6 @@
 package com.minimalist.launcher.data.notifications
 
+import com.minimalist.launcher.system.TrustedClock
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -63,7 +64,7 @@ class NotificationsRepository(
     fun matchVip(title: String?): Vip? = VipMatcher.match(title, vips.value)
 
     fun rememberVipMessage(vip: Vip, text: String, reply: Notification.Action?) {
-        _vipMessages.value = _vipMessages.value + (vip.id to VipMessage(vip, text, System.currentTimeMillis(), reply))
+        _vipMessages.value = _vipMessages.value + (vip.id to VipMessage(vip, text, TrustedClock.nowMillis(), reply))
     }
 
     suspend fun hold(packageName: String, title: String?, text: String?, reason: String) {
@@ -72,7 +73,7 @@ class NotificationsRepository(
                 packageName = packageName,
                 title = title,
                 text = text,
-                postedAt = System.currentTimeMillis(),
+                postedAt = TrustedClock.nowMillis(),
                 reason = reason,
                 // Blocked apps' notifications are only saved, never delivered later.
                 delivered = reason == BLOCKED,
@@ -85,7 +86,7 @@ class NotificationsRepository(
         if (lock != null) return@withLock
         deliver(MODE, "While you were away")
         val state = modes.state.value
-        if (state.batchingEnabled && BatchTimes.due(state.lastBatchAt, ZonedDateTime.now(), state.batchTimes)) {
+        if (state.batchingEnabled && BatchTimes.due(state.lastBatchAt, TrustedClock.zonedNow(), state.batchTimes)) {
             modes.setLastBatchAt(nowMillis)
             deliver(BATCH, "Your notifications")
         }
@@ -144,7 +145,7 @@ class NotificationsRepository(
     }
 
     suspend fun logUrgent(vip: Vip, mode: String?) {
-        dao.logUrgent(UrgentLogEntity(vipName = vip.name, sentAt = System.currentTimeMillis(), mode = mode))
+        dao.logUrgent(UrgentLogEntity(vipName = vip.name, sentAt = TrustedClock.nowMillis(), mode = mode))
     }
 
     fun urgentToday(): Flow<Int> = dao.observeUrgentSince(startOfToday())
@@ -170,6 +171,6 @@ class NotificationsRepository(
 
         val WHATSAPP_PACKAGES = setOf("com.whatsapp", "com.whatsapp.w4b")
 
-        private fun startOfToday() = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        private fun startOfToday() = TrustedClock.today().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
 }

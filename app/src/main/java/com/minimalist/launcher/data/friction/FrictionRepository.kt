@@ -1,5 +1,7 @@
 package com.minimalist.launcher.data.friction
 
+import com.minimalist.launcher.system.TrustedClock
+import android.content.Context
 import com.minimalist.launcher.data.db.AppDatabase
 import com.minimalist.launcher.data.db.FrictionLogEntity
 import com.minimalist.launcher.domain.friction.RatedPull
@@ -16,20 +18,36 @@ import java.util.concurrent.ConcurrentHashMap
 /** A friction app opened for a chosen length of time. */
 data class FrictionSession(val logId: Long, val packageName: String, val endsAtMillis: Long)
 
-class FrictionRepository(database: AppDatabase, scope: CoroutineScope) {
+class FrictionRepository(context: Context, database: AppDatabase, scope: CoroutineScope) {
 
     private val dao = database.frictionDao()
-    private val sessions = ConcurrentHashMap<String, FrictionSession>()
+
+    /** Kept on disk too, so ColorOS closing the app mid-session doesn't ask for friction again. */
+    private val saved = context.getSharedPreferences("friction_sessions", Context.MODE_PRIVATE)
+    private val sessions = ConcurrentHashMap<String, FrictionSession>().apply {
+        saved.all.forEach { (packageName, value) ->
+            val parts = (value as? String)?.split(',') ?: return@forEach
+            val id = parts.getOrNull(0)?.toLongOrNull() ?: return@forEach
+            val ends = parts.getOrNull(1)?.toLongOrNull() ?: return@forEach
+            put(packageName, FrictionSession(id, packageName, ends))
+        }
+    }
+
+    private fun persist() {
+        saved.edit().clear().apply {
+            sessions.values.forEach { putString(it.packageName, "${it.logId},${it.endsAtMillis}") }
+        }.apply()
+    }
 
     val apps: StateFlow<Set<String>> = dao.observeApps()
         .map { it.toSet() }
         .stateIn(scope, SharingStarted.Eagerly, emptySet())
 
     /** True when [packageName] is slowed down and has no session running. */
-    fun needsFriction(packageName: String, nowMillis: Long = System.currentTimeMillis()): Boolean =
+    fun needsFriction(packageName: String, nowMillis: Long = TrustedClock.nowMillis()): Boolean =
         packageName in apps.value && activeSession(packageName, nowMillis) == null
 
-    fun activeSession(packageName: String, nowMillis: Long = System.currentTimeMillis()): FrictionSession? =
+    fun activeSession(packageName: String, nowMillis: Long = TrustedClock.nowMillis()): FrictionSession? =
         sessions[packageName]?.takeIf { it.endsAtMillis > nowMillis }
 
     fun sessionFor(packageName: String): FrictionSession? = sessions[packageName]
@@ -43,7 +61,7 @@ class FrictionRepository(database: AppDatabase, scope: CoroutineScope) {
     suspend fun opensToday(packageName: String): Int = dao.opensSince(packageName, startOfToday())
 
     suspend fun startSession(packageName: String, urge: Int, reason: String, minutes: Int, lengthMillis: Long): FrictionSession {
-        val now = System.currentTimeMillis()
+        val now = TrustedClock.nowMillis()
         val id = dao.insertLog(
             FrictionLogEntity(
                 packageName = packageName,
@@ -56,13 +74,17 @@ class FrictionRepository(database: AppDatabase, scope: CoroutineScope) {
                 endedAt = null,
             ),
         )
-        return FrictionSession(id, packageName, now + lengthMillis).also { sessions[packageName] = it }
+        return FrictionSession(id, packageName, now + lengthMillis).also {
+            sessions[packageName] = it
+            persist()
+        }
     }
 
     /** Ends and forgets the session; returns it so its worth can be asked. */
     suspend fun endSession(packageName: String): FrictionSession? {
         val session = sessions.remove(packageName) ?: return null
-        dao.endSession(session.logId, System.currentTimeMillis())
+        persist()
+        dao.endSession(session.logId, TrustedClock.nowMillis())
         return session
     }
 
@@ -70,7 +92,7 @@ class FrictionRepository(database: AppDatabase, scope: CoroutineScope) {
         dao.insertLog(
             FrictionLogEntity(
                 packageName = packageName,
-                startedAt = System.currentTimeMillis(),
+                startedAt = TrustedClock.nowMillis(),
                 urge = urge,
                 reason = reason?.trim()?.ifEmpty { null },
                 outcome = RESISTED,
@@ -91,6 +113,7 @@ class FrictionRepository(database: AppDatabase, scope: CoroutineScope) {
 
     suspend fun clear() {
         sessions.clear()
+        persist()
         dao.clearApps()
     }
 
@@ -98,9 +121,9 @@ class FrictionRepository(database: AppDatabase, scope: CoroutineScope) {
         const val OPENED = "opened"
         const val RESISTED = "resisted"
 
-        fun startOfToday(): Long = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        fun startOfToday(): Long = TrustedClock.today().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
         fun daysAgo(days: Long): Long =
-            LocalDate.now().minusDays(days).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            TrustedClock.today().minusDays(days).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
 }

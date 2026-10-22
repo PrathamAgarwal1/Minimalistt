@@ -45,6 +45,9 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onPutAway: () -> Unit,
     onUrgentMessage: () -> Unit,
+    onOpenSetup: () -> Unit = {},
+    onBlockApp: () -> Unit = {},
+    onOpenStats: () -> Unit = {},
     viewModel: HomeViewModel = appViewModel { HomeViewModel(it) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -56,6 +59,7 @@ fun HomeScreen(
     val context = LocalContext.current
     var editingIntention by remember { mutableStateOf(false) }
     var optionsFor by remember { mutableStateOf<LaunchableApp?>(null) }
+    var quickMenu by remember { mutableStateOf(false) }
 
     val is24Hour = DateFormat.is24HourFormat(context)
     val timeFormat = remember(is24Hour) { DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm") }
@@ -79,7 +83,7 @@ fun HomeScreen(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = {},
-                    onLongClick = onOpenSettings,
+                    onLongClick = { quickMenu = true },
                 ),
             )
             Label(text = now.format(dateFormat), style = Type.small)
@@ -88,6 +92,14 @@ fun HomeScreen(
                 Label(text = it, style = Type.small.copy(color = Palette.Faint))
             }
 
+            if (glance.blockingOff) {
+                TextAction(
+                    text = "Blocking is off. Tap to turn it back on.",
+                    onClick = onOpenSetup,
+                    style = Type.small.copy(color = Palette.Accent),
+                    alignment = itemAlignment,
+                )
+            }
             Spacer(Modifier.height(16.dp))
             val intention = state.intention
             if (!look.showIntention) {
@@ -140,6 +152,20 @@ fun HomeScreen(
             placeholder = "One thing",
             onSave = viewModel::setIntention,
             onDismiss = { editingIntention = false },
+        )
+    }
+
+    if (quickMenu) {
+        OptionsDialog(
+            title = "Minimalist",
+            options = listOf(
+                "Block an app" to onBlockApp,
+                "Put away" to onPutAway,
+                "Stats" to onOpenStats,
+                "Settings" to onOpenSettings,
+                "Setup and status" to onOpenSetup,
+            ),
+            onDismiss = { quickMenu = false },
         )
     }
 

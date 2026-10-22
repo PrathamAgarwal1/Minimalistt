@@ -5,15 +5,12 @@ import com.minimalist.launcher.domain.blocking.Schedule
 import com.minimalist.launcher.domain.blocking.TimeScale
 import com.minimalist.launcher.domain.modes.DayModeConfig
 import com.minimalist.launcher.domain.modes.StudyWindow
-import com.minimalist.launcher.domain.protection.EmergencyRules
 import com.minimalist.launcher.domain.protection.Protection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
-import java.time.ZoneId
-import java.time.ZonedDateTime
 
 class ProtectionTest {
 
@@ -99,17 +96,5 @@ class ProtectionTest {
         assertTrue(Protection.urgentWeakens(3, 5))
         assertTrue(Protection.testModeWeakens(true))
         assertFalse(Protection.testModeWeakens(false))
-    }
-
-    @Test
-    fun emergencyOncePerCalendarMonth() {
-        val zone = ZoneId.of("Asia/Kolkata")
-        fun at(month: Int, day: Int) = ZonedDateTime.of(2026, month, day, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
-        assertTrue(EmergencyRules.available(emptyList(), at(10, 22), zone, TimeScale.REAL))
-        assertFalse(EmergencyRules.available(listOf(at(10, 1)), at(10, 31), zone, TimeScale.REAL))
-        assertTrue(EmergencyRules.available(listOf(at(9, 30)), at(10, 1), zone, TimeScale.REAL))
-        val now = at(10, 22)
-        assertFalse(EmergencyRules.available(listOf(now - 600_000), now, zone, TimeScale(testMode = true)))
-        assertTrue(EmergencyRules.available(listOf(now - 7_200_000), now, zone, TimeScale(testMode = true)))
     }
 }

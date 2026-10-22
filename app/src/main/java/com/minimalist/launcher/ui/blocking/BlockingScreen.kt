@@ -22,7 +22,9 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.BuildConfig
 import com.minimalist.launcher.blocking.BlockerService
+import com.minimalist.launcher.data.protection.Change
 import com.minimalist.launcher.domain.DurationFormat
+import com.minimalist.launcher.domain.parts.AppParts
 import com.minimalist.launcher.ui.appContainer
 import com.minimalist.launcher.ui.appViewModel
 import com.minimalist.launcher.ui.components.Label
@@ -49,6 +51,7 @@ fun BlockingScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val container = appContainer()
+    val modes by container.modes.state.collectAsStateWithLifecycle()
     var serviceOn by remember { mutableStateOf(BlockerService.isEnabled(context)) }
     LifecycleResumeEffect(Unit) {
         serviceOn = BlockerService.isEnabled(context)
@@ -104,6 +107,21 @@ fun BlockingScreen(
                 )
             }
             TextAction(text = "Block an app", onClick = onBlockApp, modifier = Modifier.fillMaxWidth())
+
+            SectionHeader("Parts of apps")
+            Label("Block the endless feed and keep the rest of the app. Works while the blocking service is on.", style = Type.small)
+            AppParts.ALL.forEach { part ->
+                val on = part.key in modes.blockedParts
+                TwoLineRow(
+                    title = part.label,
+                    subtitle = if (on) "Blocked" else "Allowed",
+                    action = if (on) "Allow" else "Block",
+                    onAction = {
+                        val parts = if (on) modes.blockedParts - part.key else modes.blockedParts + part.key
+                        container.changes.submit(Change.SetBlockedParts(parts))
+                    },
+                )
+            }
 
             SectionHeader("Schedules")
             if (state.schedules.isEmpty()) Label("None. For example 22:00–08:00 every night.", style = Type.small)

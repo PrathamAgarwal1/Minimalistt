@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -48,6 +49,8 @@ import com.minimalist.launcher.ui.earn.EarnScreen
 import com.minimalist.launcher.ui.settings.AppearanceScreen
 import com.minimalist.launcher.ui.setup.SetupScreen
 import com.minimalist.launcher.ui.stats.StatsScreen
+import com.minimalist.launcher.ui.stats.WeeklyReviewScreen
+import com.minimalist.launcher.domain.stats.WeeklyReview
 import com.minimalist.launcher.ui.settings.SettingsScreen
 import com.minimalist.launcher.ui.settings.SettingsViewModel
 import kotlinx.coroutines.flow.Flow
@@ -83,6 +86,7 @@ sealed interface Destination {
     data object EarnPicker : Destination { override val parent = Earn }
     data object Stats : Destination { override val parent = Settings }
     data object StatsWantingLiking : Destination { override val parent = Stats }
+    data object WeeklyReview : Destination { override val parent = Stats }
     data object Setup : Destination { override val parent = Settings }
     data object PendingChanges : Destination { override val parent = Protection }
     data object Letters : Destination { override val parent = Protection }
@@ -107,7 +111,12 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
 
     LaunchedEffect(homePresses) { homePresses.collect { destination = Destination.Home } }
     LaunchedEffect(openRequests) {
-        openRequests.collect { if (it == MainActivity.OPEN_HELD) destination = Destination.HeldNotifications }
+        openRequests.collect {
+            when (it) {
+                MainActivity.OPEN_HELD -> destination = Destination.HeldNotifications
+                MainActivity.OPEN_SETUP -> destination = Destination.Setup
+            }
+        }
     }
     LaunchedEffect(notice) { if (notice != null) destination = Destination.Home }
     BackHandler { destination.parent?.let { destination = it } }
@@ -136,8 +145,22 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
             null -> Unit
         }
         // Once the phone opens after night: the morning screen, shown once.
-        if (lock == null && notice == null && modesState.morningScreenDay == java.time.LocalDate.now().toEpochDay()) {
+        if (lock == null && notice == null && modesState.morningScreenDay == TrustedClock.today().toEpochDay()) {
             MorningScreen()
+        }
+        // Sunday evening, once: the week in review. Waits for locks, notices and the morning.
+        val reviewScope = rememberCoroutineScope()
+        // The first review waits for a week of history.
+        LaunchedEffect(modesState.loaded, modesState.lastReviewAt) {
+            if (modesState.loaded && modesState.lastReviewAt == null) container.modes.setLastReviewAt(TrustedClock.nowMillis())
+        }
+        val morningShowing = modesState.morningScreenDay == TrustedClock.today().toEpochDay()
+        if (setupDone && lock == null && notice == null && !morningShowing && modesState.lastReviewAt != null &&
+            WeeklyReview.isDue(modesState.lastReviewAt, TrustedClock.zonedNow())
+        ) {
+            WeeklyReviewScreen(onClose = {
+                reviewScope.launch { container.modes.setLastReviewAt(TrustedClock.nowMillis()) }
+            })
         }
         // First run: walk through every permission once.
         if (!setupDone && lock == null) {
@@ -159,10 +182,13 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onOpenSettings = { navigate(Destination.Settings) },
             onPutAway = { navigate(Destination.PutAway) },
             onUrgentMessage = { navigate(Destination.UrgentMessage) },
+            onOpenSetup = { navigate(Destination.Setup) },
+            onBlockApp = { navigate(Destination.BlockPicker) },
+            onOpenStats = { navigate(Destination.Stats) },
         )
         Destination.Search -> SearchScreen(
             onDone = { navigate(Destination.Home) },
-            onOpenSettings = { navigate(Destination.Settings) },
+            onOpen = navigate,
         )
         Destination.Settings -> SettingsScreen(
             onBack = back,
@@ -176,6 +202,7 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onOpenEarn = { navigate(Destination.Earn) },
             onOpenStats = { navigate(Destination.Stats) },
             onOpenSetup = { navigate(Destination.Setup) },
+            onOpenWeeklyReview = { navigate(Destination.WeeklyReview) },
         )
         Destination.Earn -> EarnScreen(onBack = back, onAddApp = { navigate(Destination.EarnPicker) })
         Destination.EarnPicker -> {
@@ -191,7 +218,12 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
                 },
             )
         }
-        Destination.Stats -> StatsScreen(onBack = back, onOpenWantingLiking = { navigate(Destination.StatsWantingLiking) })
+        Destination.Stats -> StatsScreen(
+            onBack = back,
+            onOpenWantingLiking = { navigate(Destination.StatsWantingLiking) },
+            onOpenWeeklyReview = { navigate(Destination.WeeklyReview) },
+        )
+        Destination.WeeklyReview -> WeeklyReviewScreen(onClose = back)
         Destination.StatsWantingLiking -> WantingLikingScreen(onBack = back, onBlock = { navigate(Destination.BlockDuration(it)) })
         Destination.Setup -> SetupScreen(onBack = back)
         Destination.Appearance -> AppearanceScreen(onBack = back)

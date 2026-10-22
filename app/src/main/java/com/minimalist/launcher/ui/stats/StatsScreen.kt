@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.stats
 
+import com.minimalist.launcher.system.TrustedClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -49,7 +50,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun StatsScreen(onBack: () -> Unit, onOpenWantingLiking: () -> Unit) {
+fun StatsScreen(onBack: () -> Unit, onOpenWantingLiking: () -> Unit, onOpenWeeklyReview: () -> Unit) {
     val container = appContainer()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -57,7 +58,7 @@ fun StatsScreen(onBack: () -> Unit, onOpenWantingLiking: () -> Unit) {
     var summary by remember { mutableStateOf<StatsSummary?>(null) }
     var opens by remember { mutableStateOf<List<FirstOpenEntity>>(emptyList()) }
     var exported by remember { mutableStateOf<String?>(null) }
-    val today = remember { LocalDate.now().toEpochDay() }
+    val today = remember { TrustedClock.today().toEpochDay() }
     val fromDay = if (week) today - 6 else today
 
     LaunchedEffect(week) {
@@ -86,6 +87,7 @@ fun StatsScreen(onBack: () -> Unit, onOpenWantingLiking: () -> Unit) {
             Choice("Last 7 days", selected = week, onClick = { week = true })
         }
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            TextAction(text = "Weekly review", onClick = onOpenWeeklyReview, style = Type.small)
             val s = summary
             if (s != null) {
                 Spacer(Modifier.height(8.dp))
@@ -149,7 +151,7 @@ fun StatsScreen(onBack: () -> Unit, onOpenWantingLiking: () -> Unit) {
 
             SectionHeader("Export")
             Label("Everything Minimalist has recorded, as CSV files in one zip. It stays where you save it.", style = Type.small)
-            TextAction(text = "Export as CSV", onClick = { saveZip.launch("minimalist-${LocalDate.now()}.zip") })
+            TextAction(text = "Export as CSV", onClick = { saveZip.launch("minimalist-${TrustedClock.today()}.zip") })
             exported?.let { Label(it, style = Type.small.copy(color = Palette.Accent)) }
             Spacer(Modifier.height(24.dp))
         }
