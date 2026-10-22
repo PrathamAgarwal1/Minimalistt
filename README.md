@@ -28,6 +28,19 @@ over the old one and keeps your data.
 
 1. Open the APK in Files and allow installing from that app when asked.
 2. If ColorOS warns about an unknown app, choose to install anyway.
+
+### "This app can request access to sensitive data…"
+
+Google Play Protect's fraud protection blocks sideloaded apps that use an accessibility
+service when they are installed from a browser, chat app or file manager. The dialog has no
+install button. Two ways round it:
+
+- **Pause Play Protect:** Play Store → profile picture → Play Protect → gear icon → turn off
+  *Scan apps with Play Protect*, install the APK, then turn it back on. If Play Protect later
+  offers to remove Minimalist, keep it. Repeat for each update.
+- **Use adb (Play Protect stays on):** enable Developer options (Settings → About device →
+  Version → tap Build number 7 times), turn on USB debugging, then run
+  `adb install -r minimalist-debug.apk`. `-r` updates in place and keeps your data.
 3. Open **Minimalist**, long-press the clock → **Settings** → **Set as Home app**.
    If no dialog appears: Settings → Apps → Default apps → Home app → Minimalist.
 
