@@ -9,9 +9,16 @@ settings, local storage. Blocking, friction, modes and the setup wizard come in 
 
 ## Get the APK
 
-1. Open the repository on GitHub → **Actions** → **Build debug APK**.
-2. Open the latest green run and download the `launcher-debug-apk` artifact (a zip).
-3. Unzip it to get `app-debug.apk` and copy it to the phone.
+On the phone, open this link. It downloads the newest build straight away, with no zip:
+
+**https://github.com/PrathamAgarwal1/Minimalistt/releases/download/latest-debug/minimalist-debug.apk**
+
+Bookmark it or add it to the home screen of your browser. Every push replaces the file at the
+same link, about four minutes after the push. The release page shows which build it is:
+https://github.com/PrathamAgarwal1/Minimalistt/releases/tag/latest-debug
+
+The same APK is also attached to each run under **Actions → Build debug APK** as the
+`launcher-debug-apk` artifact (that one is a zip).
 
 Every build is signed with the same debug key (`app/debug.keystore`), so a new APK installs
 over the old one and keeps your data.
