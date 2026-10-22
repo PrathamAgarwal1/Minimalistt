@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.minimalist.launcher.data.protection.Change
 import com.minimalist.launcher.domain.blocking.ScheduleRules
 import com.minimalist.launcher.notifications.NotificationGuard
 import com.minimalist.launcher.ui.appContainer
@@ -77,6 +78,7 @@ fun NotificationsSettingsScreen(onBack: () -> Unit, onOpenHeld: () -> Unit) {
             } else {
                 Label("Off. Blocked apps' notifications still show until it's on.", style = Type.body)
                 TextAction(text = "Turn on notification access", onClick = {
+                    container.grantSettingsPass()
                     val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
                         .putExtra(
                             Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
@@ -90,7 +92,10 @@ fun NotificationsSettingsScreen(onBack: () -> Unit, onOpenHeld: () -> Unit) {
                 )
                 TextAction(
                     text = "Open App info",
-                    onClick = { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) },
+                    onClick = {
+                        container.grantSettingsPass()
+                        open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                    },
                     style = Type.small,
                 )
             }
@@ -109,7 +114,7 @@ fun NotificationsSettingsScreen(onBack: () -> Unit, onOpenHeld: () -> Unit) {
                     "Off: notifications arrive as they come"
                 },
                 action = if (state.batchingEnabled) "Turn off" else "Turn on",
-                onAction = { scope.launch { container.modes.setBatching(!state.batchingEnabled, state.batchTimes) } },
+                onAction = { container.changes.submit(Change.SetBatching(!state.batchingEnabled, state.batchTimes)) },
             )
             if (state.batchingEnabled) {
                 FlowRow {
@@ -117,7 +122,7 @@ fun NotificationsSettingsScreen(onBack: () -> Unit, onOpenHeld: () -> Unit) {
                         val selected = minute in state.batchTimes
                         Choice(ScheduleRules.formatMinute(minute), selected = selected, onClick = {
                             val times = if (selected) state.batchTimes - minute else state.batchTimes + minute
-                            if (times.isNotEmpty()) scope.launch { container.modes.setBatching(true, times) }
+                            if (times.isNotEmpty()) container.changes.submit(Change.SetBatching(true, times))
                         })
                     }
                 }
@@ -153,7 +158,7 @@ fun NotificationsSettingsScreen(onBack: () -> Unit, onOpenHeld: () -> Unit) {
                     val phone = vipPhone
                     vipName = ""
                     vipPhone = ""
-                    scope.launch { container.notifications.addVip(name, phone) }
+                    container.changes.submit(Change.AddVip(name, phone))
                 },
             )
 
@@ -161,7 +166,7 @@ fun NotificationsSettingsScreen(onBack: () -> Unit, onOpenHeld: () -> Unit) {
             FlowRow {
                 listOf(1, 3, 5, 10).forEach { count ->
                     Choice("$count", selected = state.urgentPerSession == count, onClick = {
-                        scope.launch { container.modes.setUrgentPerSession(count) }
+                        container.changes.submit(Change.SetUrgentPerSession(count))
                     })
                 }
             }

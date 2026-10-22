@@ -37,6 +37,7 @@ import com.minimalist.launcher.ui.components.InputField
 import com.minimalist.launcher.ui.components.Label
 import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.TextAction
+import com.minimalist.launcher.ui.protection.EmergencyUnlockAction
 import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Type
 import kotlinx.coroutines.delay
@@ -54,6 +55,11 @@ private object NightPalette {
 /** What the home screen becomes while Put away, morning or night mode runs. */
 @Composable
 fun LockScreen(lock: ActiveLock, onUrgent: () -> Unit) {
+    LockScreenContent(lock, onUrgent)
+}
+
+@Composable
+private fun LockScreenContent(lock: ActiveLock, onUrgent: () -> Unit) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -64,7 +70,7 @@ fun LockScreen(lock: ActiveLock, onUrgent: () -> Unit) {
     val left = DurationFormat.remaining(lock.untilMillis - now)
     val until = BlockingText.until(lock.untilMillis)
     when (lock.kind) {
-        LockKind.PutAway -> PutAwayLock(left, until, onUrgent)
+        LockKind.PutAway, LockKind.Challenge -> PutAwayLock(left, until, onUrgent)
         LockKind.Morning -> MorningLock(left, onUrgent)
         LockKind.Night -> NightLock(left, until, onUrgent)
     }
@@ -240,6 +246,11 @@ private fun LockApps(kind: LockKind, style: TextStyle, onUrgent: () -> Unit) {
             TextAction(label, onClick = { container.launchPackage(packageName) }, style = style)
         }
         TextAction("Urgent message", onClick = onUrgent, style = style)
+    }
+    val lock = container.lock.collectAsStateWithLifecycle().value
+    SpacedRow {
+        lock?.let { TextAction("Solve problems to get past", onClick = { container.requestUnlock(it) }, style = style) }
+        EmergencyUnlockAction(style = style)
     }
 }
 

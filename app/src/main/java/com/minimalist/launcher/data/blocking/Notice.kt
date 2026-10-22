@@ -15,6 +15,9 @@ sealed interface Notice {
     /** A friction app wants to open: urge, reason, session length, countdown. */
     data class Friction(val packageName: String, val label: String) : Notice
 
+    /** A Settings page that could switch protection off was closed. */
+    data object SettingsClosed : Notice
+
     /** A friction session just ended: was it worth it? */
     data class WorthIt(val logId: Long, val packageName: String, val label: String) : Notice
 }

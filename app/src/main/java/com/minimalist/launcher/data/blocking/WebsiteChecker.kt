@@ -1,6 +1,8 @@
 package com.minimalist.launcher.data.blocking
 
 import com.minimalist.launcher.data.db.AppDatabase
+import com.minimalist.launcher.data.protection.UnlockRepository
+import com.minimalist.launcher.data.protection.UnlockTarget
 import com.minimalist.launcher.domain.blocking.BlockDecision
 import com.minimalist.launcher.domain.blocking.BlockReason
 import com.minimalist.launcher.domain.websites.AppDomains
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.stateIn
 class WebsiteChecker(
     database: AppDatabase,
     private val checker: BlockChecker,
+    private val unlocks: UnlockRepository,
     scope: CoroutineScope,
 ) {
     private val dao = database.domainsDao()
@@ -26,7 +29,9 @@ class WebsiteChecker(
     /** [addressBar] is what the browser shows; returns the block for it, if any. */
     suspend fun check(addressBar: String?): BlockDecision.Blocked? {
         val host = DomainMatcher.host(addressBar) ?: return null
+        if (unlocks.hasPass(UnlockTarget.Domain(host))) return null
         DomainMatcher.match(host, customDomains.value)?.let { domain ->
+            if (unlocks.hasPass(UnlockTarget.Domain(domain))) return null
             return BlockDecision.Blocked(listOf(BlockReason.Website(domain, Long.MAX_VALUE)))
         }
         val candidates = AppDomains.MAP.filterValues { DomainMatcher.match(host, it) != null }.keys

@@ -25,6 +25,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.minimalist.launcher.data.protection.Change
 import com.minimalist.launcher.domain.blocking.ScheduleRules
 import com.minimalist.launcher.domain.modes.DayModeConfig
 import com.minimalist.launcher.modes.GuardService
@@ -69,9 +70,7 @@ fun ModesSettingsScreen(
         onPauseOrDispose {}
     }
     val day = state.dayModes
-    fun setDay(config: DayModeConfig) {
-        scope.launch { modes.setDayModes(config) }
-    }
+    fun setDay(config: DayModeConfig) = container.changes.submit(Change.SetDayModes(config))
 
     Screen {
         Spacer(Modifier.height(40.dp))
@@ -82,7 +81,7 @@ fun ModesSettingsScreen(
             FlowRow {
                 listOf(0, 15, 30, 60).forEach { minutes ->
                     Choice(if (minutes == 0) "Off" else BlockingText.minutes(minutes), selected = state.unplugMinutes == minutes, onClick = {
-                        scope.launch { modes.setUnplugMinutes(minutes) }
+                        container.changes.submit(Change.SetUnplug(minutes))
                     })
                 }
             }
@@ -90,7 +89,7 @@ fun ModesSettingsScreen(
             FlowRow {
                 listOf(0, 10, 15, 20, 30).forEach { count ->
                     Choice(if (count == 0) "Off" else "$count", selected = state.pickupThreshold == count, onClick = {
-                        scope.launch { modes.setPickups(count, state.pickupMinutes) }
+                        container.changes.submit(Change.SetPickups(count, state.pickupMinutes))
                     })
                 }
             }
@@ -99,7 +98,7 @@ fun ModesSettingsScreen(
                     Label("for ", style = Type.small)
                     listOf(15, 30, 60).forEach { minutes ->
                         Choice(BlockingText.minutes(minutes), selected = state.pickupMinutes == minutes, onClick = {
-                            scope.launch { modes.setPickups(state.pickupThreshold, minutes) }
+                            container.changes.submit(Change.SetPickups(state.pickupThreshold, minutes))
                         })
                     }
                 }
@@ -109,7 +108,7 @@ fun ModesSettingsScreen(
                 LabelledAction(
                     label = "${ScheduleRules.formatMinute(window.startMinute)}–${ScheduleRules.formatMinute(window.endMinute)} · ${BlockingText.days(window.days)}",
                     action = "Remove",
-                    onAction = { scope.launch { modes.setStudyWindows(state.studyWindows.filterIndexed { i, _ -> i != index }) } },
+                    onAction = { container.changes.submit(Change.SetStudyWindows(state.studyWindows.filterIndexed { i, _ -> i != index })) },
                 )
             }
             TextAction(text = "Add study hours", onClick = onAddStudyHours, style = Type.small)
@@ -176,6 +175,7 @@ fun ModesSettingsScreen(
             } else {
                 Label("For the red tint at night, allow Minimalist to display over other apps.", style = Type.small)
                 TextAction(text = "Allow display over apps", onClick = {
+                    container.grantSettingsPass()
                     runCatching {
                         context.startActivity(
                             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
@@ -190,7 +190,7 @@ fun ModesSettingsScreen(
             Label("Essentials, e.g. UPI apps", style = Type.body)
             state.essentials.sortedBy { container.labelFor(it).lowercase() }.forEach { packageName ->
                 LabelledAction(label = container.labelFor(packageName), action = "Remove", onAction = {
-                    scope.launch { modes.setEssentials(state.essentials - packageName) }
+                    container.changes.submit(Change.SetEssentials(state.essentials - packageName))
                 })
             }
             TextAction(text = "Add an essential", onClick = { onPickApp(ModeAppRole.Essential) }, style = Type.small)
@@ -198,13 +198,13 @@ fun ModesSettingsScreen(
                 title = "Audio app (morning and night)",
                 subtitle = state.audioApp?.let(container::labelFor) ?: "None",
                 action = if (state.audioApp == null) "Choose" else "Clear",
-                onAction = { if (state.audioApp == null) onPickApp(ModeAppRole.Audio) else scope.launch { modes.setAudioApp(null) } },
+                onAction = { if (state.audioApp == null) onPickApp(ModeAppRole.Audio) else container.changes.submit(Change.SetAudioApp(null)) },
             )
             TwoLineRow(
                 title = "Notes app (morning and night)",
                 subtitle = state.notesApp?.let(container::labelFor) ?: "None",
                 action = if (state.notesApp == null) "Choose" else "Clear",
-                onAction = { if (state.notesApp == null) onPickApp(ModeAppRole.Notes) else scope.launch { modes.setNotesApp(null) } },
+                onAction = { if (state.notesApp == null) onPickApp(ModeAppRole.Notes) else container.changes.submit(Change.SetNotesApp(null)) },
             )
 
             SectionHeader("Background")

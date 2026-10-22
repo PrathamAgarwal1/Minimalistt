@@ -64,6 +64,7 @@ class ModeCoordinator(private val container: AppContainer) {
             }
         }
 
+        container.changes.applyDue()
         val lock = container.currentLock()
         modes.syncModeLog(lock, nowMillis)
         container.notifications.onTick(lock, nowMillis)

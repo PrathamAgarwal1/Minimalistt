@@ -13,6 +13,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.data.blocking.Notice
+import com.minimalist.launcher.data.protection.Change
+import com.minimalist.launcher.ui.protection.ChallengeScreen
+import com.minimalist.launcher.ui.protection.ChangeConfirmScreen
+import com.minimalist.launcher.ui.protection.LettersScreen
+import com.minimalist.launcher.ui.protection.PendingChangesScreen
+import com.minimalist.launcher.ui.protection.ProtectionScreen
+import com.minimalist.launcher.ui.protection.SettingsClosedScreen
 import com.minimalist.launcher.domain.FavouriteOrder
 import com.minimalist.launcher.ui.apps.AppPickerScreen
 import com.minimalist.launcher.ui.apps.PickerMode
@@ -65,6 +72,9 @@ sealed interface Destination {
     data object Notifications : Destination { override val parent = Settings }
     data object HeldNotifications : Destination { override val parent = Notifications }
     data object Websites : Destination { override val parent = Settings }
+    data object Protection : Destination { override val parent = Settings }
+    data object PendingChanges : Destination { override val parent = Protection }
+    data object Letters : Destination { override val parent = Protection }
     data object PutAway : Destination { override val parent = Home }
     data object UrgentMessage : Destination { override val parent = Home }
 }
@@ -79,6 +89,8 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
     var destination by remember { mutableStateOf<Destination>(Destination.Home) }
     val notice by container.notice.collectAsStateWithLifecycle()
     val lock by container.lock.collectAsStateWithLifecycle()
+    val changeRequest by container.changes.request.collectAsStateWithLifecycle()
+    val unlockRequest by container.unlockRequest.collectAsStateWithLifecycle()
 
     LaunchedEffect(homePresses) { homePresses.collect { destination = Destination.Home } }
     LaunchedEffect(openRequests) {
@@ -103,11 +115,15 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
                 notice = current,
                 onClose = { container.notice.value = null },
                 onUrgeRidden = { container.applicationScope.launch { container.friction.recordResisted(current.packageName, null, null) } },
+                onUnlockEarly = { container.requestUnlock(current) },
             )
             is Notice.Friction -> FrictionScreen(current)
             is Notice.WorthIt -> WorthScreen(current)
+            Notice.SettingsClosed -> SettingsClosedScreen(onClose = { container.notice.value = null })
             null -> Unit
         }
+        changeRequest?.let { ChangeConfirmScreen(it) }
+        unlockRequest?.let { ChallengeScreen(it) }
     }
 }
 
@@ -133,7 +149,15 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onOpenModes = { navigate(Destination.Modes) },
             onOpenNotifications = { navigate(Destination.Notifications) },
             onOpenWebsites = { navigate(Destination.Websites) },
+            onOpenProtection = { navigate(Destination.Protection) },
         )
+        Destination.Protection -> ProtectionScreen(
+            onBack = back,
+            onOpenPending = { navigate(Destination.PendingChanges) },
+            onOpenLetters = { navigate(Destination.Letters) },
+        )
+        Destination.PendingChanges -> PendingChangesScreen(onBack = back)
+        Destination.Letters -> LettersScreen(onBack = back)
         Destination.Modes -> ModesSettingsScreen(
             onBack = back,
             onAddStudyHours = { navigate(Destination.StudyHours) },
@@ -156,15 +180,15 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
                 },
                 onBack = back,
                 onPick = { app ->
-                    scope.launch {
-                        val modes = container.modes
+                    val modes = container.modes
+                    container.changes.submit(
                         when (screen.role) {
-                            ModeAppRole.Essential -> modes.setEssentials(modes.state.value.essentials + app.packageName)
-                            ModeAppRole.Audio -> modes.setAudioApp(app.packageName)
-                            ModeAppRole.Notes -> modes.setNotesApp(app.packageName)
-                        }
-                        back()
-                    }
+                            ModeAppRole.Essential -> Change.SetEssentials(modes.state.value.essentials + app.packageName)
+                            ModeAppRole.Audio -> Change.SetAudioApp(app.packageName)
+                            ModeAppRole.Notes -> Change.SetNotesApp(app.packageName)
+                        },
+                    )
+                    back()
                 },
             )
         }

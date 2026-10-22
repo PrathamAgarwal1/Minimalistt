@@ -3,6 +3,7 @@ package com.minimalist.launcher.ui.blocking
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minimalist.launcher.AppContainer
+import com.minimalist.launcher.data.protection.Change
 import com.minimalist.launcher.domain.blocking.AppLimit
 import com.minimalist.launcher.domain.blocking.BlockUnit
 import com.minimalist.launcher.domain.blocking.Schedule
@@ -73,37 +74,23 @@ class BlockingViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch { blocking.extendBlock(packageName, duration) }
     }
 
-    fun removeBlock(packageName: String) {
-        viewModelScope.launch { blocking.removeBlock(packageName) }
-    }
+    // Everything that could loosen protection goes through the change gate and its cooldown.
 
-    fun saveLimit(limit: AppLimit) {
-        viewModelScope.launch { blocking.saveLimit(limit) }
-    }
+    fun removeBlock(packageName: String) = container.changes.submit(Change.RemoveBlock(packageName))
 
-    fun removeLimit(packageName: String) {
-        viewModelScope.launch { blocking.removeLimit(packageName) }
-    }
+    fun saveLimit(limit: AppLimit) = container.changes.submit(Change.SaveLimit(limit))
+
+    fun removeLimit(packageName: String) = container.changes.submit(Change.RemoveLimit(packageName))
 
     suspend fun loadSchedule(id: Long): Schedule? = blocking.schedule(id)
 
-    fun saveSchedule(schedule: Schedule) {
-        viewModelScope.launch { blocking.saveSchedule(schedule) }
-    }
+    fun saveSchedule(schedule: Schedule) = container.changes.submit(Change.SaveSchedule(schedule))
 
-    fun setScheduleEnabled(id: Long, enabled: Boolean) {
-        viewModelScope.launch { blocking.setScheduleEnabled(id, enabled) }
-    }
+    fun setScheduleEnabled(id: Long, enabled: Boolean) = container.changes.submit(Change.SetScheduleEnabled(id, enabled))
 
-    fun deleteSchedule(id: Long) {
-        viewModelScope.launch { blocking.deleteSchedule(id) }
-    }
+    fun deleteSchedule(id: Long) = container.changes.submit(Change.DeleteSchedule(id))
 
-    fun removeFriction(packageName: String) {
-        viewModelScope.launch { container.friction.removeApp(packageName) }
-    }
+    fun removeFriction(packageName: String) = container.changes.submit(Change.RemoveFriction(packageName))
 
-    fun setTestMode(enabled: Boolean) {
-        viewModelScope.launch { container.settings.setTestMode(enabled) }
-    }
+    fun setTestMode(enabled: Boolean) = container.changes.submit(Change.SetTestMode(enabled))
 }

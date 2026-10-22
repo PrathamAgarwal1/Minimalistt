@@ -17,10 +17,15 @@ import com.minimalist.launcher.data.friction.FrictionRepository
 import com.minimalist.launcher.data.modes.ModesRepository
 import com.minimalist.launcher.data.modes.modesDataStore
 import com.minimalist.launcher.data.notifications.NotificationsRepository
+import com.minimalist.launcher.data.protection.ChangeGate
+import com.minimalist.launcher.data.protection.UnlockRepository
+import com.minimalist.launcher.data.protection.UnlockRequest
+import com.minimalist.launcher.data.protection.UnlockTarget
 import com.minimalist.launcher.data.settings.SettingsRepository
 import com.minimalist.launcher.data.settings.settingsDataStore
 import com.minimalist.launcher.domain.LaunchableApp
 import com.minimalist.launcher.domain.blocking.BlockDecision
+import com.minimalist.launcher.domain.blocking.BlockReason
 import com.minimalist.launcher.domain.blocking.TimeScale
 import com.minimalist.launcher.domain.modes.ActiveLock
 import com.minimalist.launcher.domain.modes.DayModes
@@ -84,21 +89,38 @@ class AppContainer(context: Context) {
     /** Short-lived permissions to open an app whatever blocks it, e.g. WhatsApp for an urgent message. */
     private val passes = ConcurrentHashMap<String, Long>()
 
+    /** Challenge passes and the monthly emergency unlock. */
+    val unlocks = UnlockRepository(database, applicationScope)
+
+    /** True from the first problem of a challenge until it is solved or given up. */
+    val challengeRunning = MutableStateFlow(false)
+
+    /** The challenge on screen, if any. */
+    val unlockRequest = MutableStateFlow<UnlockRequest?>(null)
+
+    /** Set while Minimalist itself sends you into Android Settings to grant a missing permission. */
+    @Volatile
+    private var settingsPassUntil = 0L
+
     val blockChecker = BlockChecker(
         blocking = blocking,
         usage = usage,
         protectedApps = protectedApps,
         timeScale = timeScale,
         phoneState = ::phoneState,
-        hasPass = { packageName -> (passes[packageName] ?: 0L) > System.currentTimeMillis() },
+        hasPass = { packageName ->
+            (passes[packageName] ?: 0L) > System.currentTimeMillis() || unlocks.hasPass(UnlockTarget.App(packageName))
+        },
     )
 
     val coordinator = ModeCoordinator(this)
 
-    val websites = WebsiteChecker(database, blockChecker, applicationScope)
+    val websites = WebsiteChecker(database, blockChecker, unlocks, applicationScope)
 
-    /** The mode running now, refreshed every few seconds. */
-    val lock: StateFlow<ActiveLock?> = combine(modes.state, ticker(LOCK_REFRESH_MILLIS)) { _, _ -> currentLock() }
+    val changes = ChangeGate(this)
+
+    /** The mode the home screen shows, refreshed every few seconds. A pass or the emergency unlock hides it. */
+    val lock: StateFlow<ActiveLock?> = combine(modes.state, ticker(LOCK_REFRESH_MILLIS)) { _, _ -> visibleLock() }
         .distinctUntilChanged()
         .stateIn(applicationScope, SharingStarted.Eagerly, null)
 
@@ -119,15 +141,16 @@ class AppContainer(context: Context) {
 
     /**
      * What still works during [lock]: calls, SMS, clock, the essentials you chose and, in the
-     * morning and at night, one audio and one notes app. Android Settings stays reachable until
-     * the emergency unlock exists, so a mode can never lock you out of the phone.
+     * morning and at night, one audio and one notes app. Android Settings is closed: the monthly
+     * emergency unlock is the way out if something goes wrong. During a challenge only calls,
+     * SMS and the clock work.
      */
     fun lockAllowedPackages(lock: ActiveLock): Set<String> {
         val state = modes.state.value
         return buildSet {
             addAll(protectedApps.packages)
+            if (lock.kind == LockKind.Challenge) return@buildSet
             addAll(state.essentials)
-            add(ANDROID_SETTINGS)
             if (lock.kind != LockKind.PutAway) {
                 state.audioApp?.let(::add)
                 state.notesApp?.let(::add)
@@ -135,8 +158,46 @@ class AppContainer(context: Context) {
         }
     }
 
+    fun visibleLock(): ActiveLock? =
+        currentLock()?.takeUnless { unlocks.hasPass(UnlockTarget.Lock) || emergencyActive() }
+
+    /** The lock that limits apps right now: a running challenge, else a mode without a pass. */
+    fun effectiveLock(): ActiveLock? {
+        val now = System.currentTimeMillis()
+        if (challengeRunning.value) return ActiveLock(LockKind.Challenge, now + CHALLENGE_LOCK_MILLIS)
+        if (unlocks.hasPass(UnlockTarget.Lock, now)) return null
+        return currentLock()
+    }
+
+    fun emergencyActive(): Boolean = unlocks.emergencyUntil() != null
+
+    /** Whether there is anything to protect, so the Settings guard has reason to act. */
+    fun protectionActive(): Boolean {
+        if (emergencyActive()) return false
+        val rules = blocking.rules.value
+        val state = modes.state.value
+        val now = System.currentTimeMillis()
+        return currentLock() != null ||
+            rules.blocks.values.any { it > now } ||
+            rules.schedules.any { it.enabled } ||
+            rules.limits.isNotEmpty() ||
+            friction.apps.value.isNotEmpty() ||
+            websites.customDomains.value.isNotEmpty() ||
+            state.allowedBrowser != null ||
+            state.dayModes.nightEnabled ||
+            state.dayModes.morningEnabled
+    }
+
+    /** Minimalist is sending you to a Settings page to switch something on. */
+    fun grantSettingsPass() {
+        settingsPassUntil = System.currentTimeMillis() + SETTINGS_PASS_MILLIS
+    }
+
+    fun hasSettingsPass(): Boolean = settingsPassUntil > System.currentTimeMillis()
+
     private fun phoneState(): PhoneState {
-        val lock = currentLock()
+        if (emergencyActive()) return PhoneState()
+        val lock = effectiveLock()
         val allowed = modes.state.value.allowedBrowser
         return PhoneState(
             lock = lock,
@@ -144,6 +205,58 @@ class AppContainer(context: Context) {
             otherBrowsers = if (allowed == null) emptySet() else browsers.packages - allowed,
             allowedBrowserLabel = allowed?.let(::labelFor).orEmpty(),
         )
+    }
+
+    /** The way in early from a block screen: a challenge sized to the time left. */
+    fun requestUnlock(blocked: Notice.Blocked) {
+        val primary = blocked.decision.primary
+        val target = when (primary) {
+            is BlockReason.Website -> UnlockTarget.Domain(blocked.label)
+            is BlockReason.Locked -> UnlockTarget.Lock
+            else -> UnlockTarget.App(blocked.packageName)
+        }
+        notice.value = null
+        unlockRequest.value = UnlockRequest(
+            target = target,
+            label = blocked.label,
+            timeLeftMillis = blocked.decision.untilMillis - System.currentTimeMillis(),
+            openPackage = blocked.packageName,
+        )
+    }
+
+    /** The way past a mode early, from its lock screen. */
+    fun requestUnlock(lock: ActiveLock) {
+        unlockRequest.value = UnlockRequest(
+            target = UnlockTarget.Lock,
+            label = lock.kind.label,
+            timeLeftMillis = lock.untilMillis - System.currentTimeMillis(),
+            openPackage = null,
+        )
+    }
+
+    /** Solved: grant the pass (the block underneath keeps its end time) and open the app. */
+    fun finishUnlock(request: UnlockRequest, reason: String, problems: Int, passMinutes: Int) {
+        applicationScope.launch(Dispatchers.Main.immediate) {
+            unlocks.grantChallengePass(request.target, reason, problems, timeScale.value.pass(passMinutes))
+            challengeRunning.value = false
+            unlockRequest.value = null
+            request.openPackage?.let(::launchPackage)
+        }
+    }
+
+    fun abandonUnlock() {
+        challengeRunning.value = false
+        unlockRequest.value = null
+    }
+
+    /** Lifts everything for 15 minutes, once a calendar month. */
+    suspend fun useEmergency(): Boolean {
+        val used = unlocks.useEmergency(timeScale.value)
+        if (used) {
+            notice.value = null
+            abandonUnlock()
+        }
+        return used
     }
 
     fun grantPass(packageName: String, millis: Long) {
@@ -225,12 +338,15 @@ class AppContainer(context: Context) {
         if (worth != null) applicationScope.launch { friction.rateWorth(logId, worth) }
     }
 
-    /** Debug reset: every block, schedule, limit, friction app, mode and today's counters. */
+    /** Debug reset: every block, schedule, limit, friction app, mode, pass, queued change and today's counters. */
     suspend fun resetAll() {
         blocking.clearEverything()
         friction.clear()
         modes.endAllModes()
         passes.clear()
+        unlocks.endAllPasses()
+        changes.clearPending()
+        challengeRunning.value = false
         notice.value = null
     }
 
@@ -242,7 +358,8 @@ class AppContainer(context: Context) {
     }
 
     companion object {
-        const val ANDROID_SETTINGS = "com.android.settings"
+        private const val CHALLENGE_LOCK_MILLIS = 3_600_000L
+        private const val SETTINGS_PASS_MILLIS = 90_000L
         private const val LOCK_REFRESH_MILLIS = 3_000L
         private const val URGENT_PASS_MILLIS = 60_000L
     }

@@ -65,7 +65,9 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: launcher-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
       # A plain .apk on a fixed release, so the phone can download it with one tap:
@@ -76,14 +78,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk minimalist-debug.apk
-          notes="Build ${GITHUB_RUN_NUMBER} from ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). Tap minimalist-debug.apk to download."
+          cp app/build/outputs/apk/release/app-release.apk minimalist.apk
+          notes="Build ${GITHUB_RUN_NUMBER} from ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). minimalist.apk is for everyday use; minimalist-debug.apk has test mode and the adb reset."
           git tag -f latest-debug
           git push -f origin refs/tags/latest-debug
           if gh release view latest-debug > /dev/null 2>&1; then
-            gh release upload latest-debug minimalist-debug.apk --clobber
+            gh release upload latest-debug minimalist-debug.apk minimalist.apk --clobber
             gh release edit latest-debug --notes "$notes"
           else
-            gh release create latest-debug minimalist-debug.apk --title "Latest debug build" --notes "$notes"
+            gh release create latest-debug minimalist-debug.apk minimalist.apk --title "Latest build" --notes "$notes"
           fi
 
       - uses: actions/upload-artifact@v5

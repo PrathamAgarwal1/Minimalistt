@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.minimalist.launcher.data.protection.Change
 import com.minimalist.launcher.domain.websites.BrowserBars
 import com.minimalist.launcher.ui.appContainer
 import com.minimalist.launcher.ui.components.Choice
@@ -52,14 +53,14 @@ fun WebsitesScreen(onBack: () -> Unit) {
                 style = Type.small,
             )
             Choice("Any browser", selected = state.allowedBrowser == null, onClick = {
-                scope.launch { container.modes.setAllowedBrowser(null) }
+                container.changes.submit(Change.SetAllowedBrowser(null))
             }, modifier = Modifier.fillMaxWidth())
             browsers.forEach { packageName ->
                 val reads = packageName in BrowserBars.VIEW_IDS
                 Choice(
                     container.labelFor(packageName) + if (reads) "" else " (sites can't be checked)",
                     selected = state.allowedBrowser == packageName,
-                    onClick = { scope.launch { container.modes.setAllowedBrowser(packageName) } },
+                    onClick = { container.changes.submit(Change.SetAllowedBrowser(packageName)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -72,7 +73,7 @@ fun WebsitesScreen(onBack: () -> Unit) {
             )
             if (custom.isEmpty()) Label("No extra sites.", style = Type.small)
             custom.sorted().forEach { site ->
-                LabelledAction(label = site, action = "Remove", onAction = { scope.launch { container.websites.remove(site) } })
+                LabelledAction(label = site, action = "Remove", onAction = { container.changes.submit(Change.RemoveDomain(site)) })
             }
             InputField(
                 value = domain,

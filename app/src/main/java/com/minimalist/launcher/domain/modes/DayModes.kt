@@ -13,6 +13,9 @@ enum class LockKind(val label: String) {
     PutAway("Put away"),
     Morning("Morning"),
     Night("Night"),
+
+    /** While an unlock challenge runs: only calls, SMS and the clock, so no calculator or browser. */
+    Challenge("A challenge"),
 }
 
 data class ActiveLock(val kind: LockKind, val untilMillis: Long)

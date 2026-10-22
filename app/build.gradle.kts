@@ -40,6 +40,8 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
+            // Same key as debug, so the release build installs over a debug one and keeps its data.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

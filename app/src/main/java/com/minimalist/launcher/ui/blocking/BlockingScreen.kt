@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.BuildConfig
 import com.minimalist.launcher.blocking.BlockerService
 import com.minimalist.launcher.domain.DurationFormat
+import com.minimalist.launcher.ui.appContainer
 import com.minimalist.launcher.ui.appViewModel
 import com.minimalist.launcher.ui.components.Label
 import com.minimalist.launcher.ui.components.LabelledAction
@@ -47,6 +48,7 @@ fun BlockingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val container = appContainer()
     var serviceOn by remember { mutableStateOf(BlockerService.isEnabled(context)) }
     LifecycleResumeEffect(Unit) {
         serviceOn = BlockerService.isEnabled(context)
@@ -76,13 +78,20 @@ fun BlockingScreen(
                 Label("1. On the App info page, tap the three dots at the top right and choose Allow restricted settings. If there are no three dots, skip this step.", style = Type.small)
                 TextAction(
                     text = "Open App info",
-                    onClick = { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) },
+                    onClick = {
+                        container.grantSettingsPass()
+                        open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                    },
                 )
                 Label("2. Turn on Minimalist blocking, then come back here.", style = Type.small)
-                TextAction(text = "Open Minimalist blocking", onClick = { openBlockerSettings() })
+                TextAction(text = "Open Minimalist blocking", onClick = {
+                    container.grantSettingsPass()
+                    openBlockerSettings()
+                })
                 Label("If that opens a list instead, look under Downloaded apps or Installed services.", style = Type.small)
             }
             Label("Phone, emergency calls, messages, clock and this launcher can never be blocked.", style = Type.small)
+            Label("Removing or loosening anything waits out a cooldown; adding or extending applies at once.", style = Type.small)
 
             SectionHeader("Blocked apps")
             if (state.blocks.isEmpty()) Label("None right now.", style = Type.small)

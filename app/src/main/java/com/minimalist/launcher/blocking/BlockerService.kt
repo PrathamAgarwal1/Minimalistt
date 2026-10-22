@@ -37,12 +37,14 @@ class BlockerService : AccessibilityService() {
         data object Tick : Event
         data object ScreenOff : Event
         data class CheckAddress(val packageName: String) : Event
+        data class CheckSettings(val packageName: String) : Event
     }
 
     private lateinit var container: AppContainer
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val events = Channel<Event>(Channel.UNLIMITED)
     private var addressCheck: Job? = null
+    private var settingsCheck: Job? = null
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -84,6 +86,14 @@ class BlockerService : AccessibilityService() {
             addressCheck = scope.launch {
                 delay(ADDRESS_SETTLE_MILLIS)
                 events.trySend(Event.CheckAddress(packageName))
+            }
+        }
+        // Settings: look for pages that could switch protection off.
+        if (packageName in SettingsGuard.PACKAGES) {
+            settingsCheck?.cancel()
+            settingsCheck = scope.launch {
+                delay(SETTINGS_SETTLE_MILLIS)
+                events.trySend(Event.CheckSettings(packageName))
             }
         }
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -146,6 +156,13 @@ class BlockerService : AccessibilityService() {
                 }
             }
             Event.ScreenOff -> usage.switchTo(null)
+            is Event.CheckSettings -> {
+                if (usage.currentPackage != event.packageName) return
+                if (!container.protectionActive() || container.hasSettingsPass()) return
+                val root = rootInActiveWindow ?: return
+                if (root.packageName?.toString() != event.packageName) return
+                if (SettingsGuard.isGuarded(SettingsGuard.visibleText(root))) sendHome(Notice.SettingsClosed)
+            }
             is Event.CheckAddress -> {
                 if (usage.currentPackage != event.packageName) return
                 val blocked = container.websites.check(addressBarText(event.packageName)) ?: return
@@ -163,7 +180,8 @@ class BlockerService : AccessibilityService() {
     }
 
     private suspend fun sendHome(notice: Notice) {
-        container.notice.value = notice
+        // During a challenge just go back to it; it restarts on its own.
+        if (!container.challengeRunning.value) container.notice.value = notice
         performGlobalAction(GLOBAL_ACTION_HOME)
         if (!HomeRole.isDefaultHome(this)) {
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -189,6 +207,7 @@ class BlockerService : AccessibilityService() {
     companion object {
         private const val TICK_MILLIS = 5_000L
         private const val ADDRESS_SETTLE_MILLIS = 400L
+        private const val SETTINGS_SETTLE_MILLIS = 300L
 
         fun isEnabled(context: Context): Boolean =
             context.getSystemService(AccessibilityManager::class.java)

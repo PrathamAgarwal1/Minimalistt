@@ -29,6 +29,7 @@ import com.minimalist.launcher.ui.blocking.BlockingText
 import com.minimalist.launcher.ui.components.Label
 import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.TextAction
+import com.minimalist.launcher.ui.protection.EmergencyUnlockAction
 import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Type
 import kotlinx.coroutines.delay
@@ -39,7 +40,7 @@ private const val URGE_WAVE_SECONDS = 60
 
 /** Shown in place of a blocked app. Calm, never scolding. */
 @Composable
-fun BlockScreen(notice: Notice.Blocked, onClose: () -> Unit, onUrgeRidden: () -> Unit = {}) {
+fun BlockScreen(notice: Notice.Blocked, onClose: () -> Unit, onUrgeRidden: () -> Unit = {}, onUnlockEarly: () -> Unit = {}) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var riding by remember(notice) { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -82,8 +83,10 @@ fun BlockScreen(notice: Notice.Blocked, onClose: () -> Unit, onUrgeRidden: () ->
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             if (!riding) {
                 TextAction(text = "Ride the urge wave · 60 s", onClick = { riding = true }, alignment = Alignment.Center)
+                TextAction(text = "Solve problems to get in early", onClick = onUnlockEarly, style = Type.small, alignment = Alignment.Center)
             }
             TextAction(text = "Back to home", onClick = onClose, style = Type.small, alignment = Alignment.Center)
+            EmergencyUnlockAction(style = Type.small.copy(color = Palette.Faint), alignment = Alignment.Center)
         }
         Spacer(Modifier.height(12.dp))
     }

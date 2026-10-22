@@ -11,11 +11,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.minimalist.launcher.data.protection.Change
 import com.minimalist.launcher.domain.blocking.ScheduleRules
 import com.minimalist.launcher.domain.modes.StudyWindow
 import com.minimalist.launcher.ui.appContainer
@@ -28,14 +28,12 @@ import com.minimalist.launcher.ui.components.SectionHeader
 import com.minimalist.launcher.ui.components.TextAction
 import com.minimalist.launcher.ui.components.pickTime
 import com.minimalist.launcher.ui.theme.Type
-import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StudyWindowEditScreen(onBack: () -> Unit) {
     val container = appContainer()
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var start by remember { mutableIntStateOf(9 * 60) }
     var end by remember { mutableIntStateOf(13 * 60) }
@@ -62,10 +60,8 @@ fun StudyWindowEditScreen(onBack: () -> Unit) {
             text = "Save",
             enabled = days.isNotEmpty() && start != end,
             onClick = {
-                scope.launch {
-                    container.modes.setStudyWindows(container.modes.state.value.studyWindows + StudyWindow(start, end, days))
-                    onBack()
-                }
+                container.changes.submit(Change.SetStudyWindows(container.modes.state.value.studyWindows + StudyWindow(start, end, days)))
+                onBack()
             },
         )
     }
