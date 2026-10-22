@@ -50,6 +50,9 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
     val glance by viewModel.glance.collectAsStateWithLifecycle()
+    val look by viewModel.appearance.collectAsStateWithLifecycle()
+    val horizontal = if (look.centred) Alignment.CenterHorizontally else Alignment.Start
+    val itemAlignment = if (look.centred) Alignment.Center else Alignment.CenterStart
     val context = LocalContext.current
     var editingIntention by remember { mutableStateOf(false) }
     var optionsFor by remember { mutableStateOf<LaunchableApp?>(null) }
@@ -68,7 +71,7 @@ fun HomeScreen(
         },
     ) {
         Spacer(Modifier.weight(1f))
-        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = horizontal) {
             Label(
                 text = now.format(timeFormat),
                 style = Type.clock,
@@ -80,26 +83,28 @@ fun HomeScreen(
                 ),
             )
             Label(text = now.format(dateFormat), style = Type.small)
-            glanceText(glance, now, timeFormat)?.let {
+            glanceText(glance, look.glance, now, timeFormat)?.let {
                 Spacer(Modifier.height(2.dp))
                 Label(text = it, style = Type.small.copy(color = Palette.Faint))
             }
 
             Spacer(Modifier.height(16.dp))
             val intention = state.intention
-            if (intention != null) {
+            if (!look.showIntention) {
+                Unit
+            } else if (intention != null) {
                 TextAction(
                     text = intention,
                     onClick = { editingIntention = true },
-                    style = Type.small.copy(color = Palette.Text, textAlign = TextAlign.Center),
-                    alignment = Alignment.Center,
+                    style = Type.small.copy(color = Palette.Text, textAlign = if (look.centred) TextAlign.Center else TextAlign.Start),
+                    alignment = itemAlignment,
                 )
             } else if (state.loaded) {
                 TextAction(
                     text = "What's the one thing you'll do today?",
                     onClick = { editingIntention = true },
                     style = Type.small.copy(color = Palette.Faint),
-                    alignment = Alignment.Center,
+                    alignment = itemAlignment,
                 )
             }
 
@@ -110,7 +115,7 @@ fun HomeScreen(
                     onClick = { viewModel.launch(app) },
                     onLongClick = { optionsFor = app },
                     style = Type.item,
-                    alignment = Alignment.Center,
+                    alignment = itemAlignment,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -151,15 +156,16 @@ fun HomeScreen(
     }
 }
 
-/** "1h 12m today · alarm 7:00", leaving out whatever isn't known. */
-private fun glanceText(glance: Glance, now: LocalDateTime, timeFormat: DateTimeFormatter): String? {
+/** "1h 12m today · alarm 7:00 · 82%", the chosen items, leaving out whatever isn't known. */
+private fun glanceText(glance: Glance, items: Set<String>, now: LocalDateTime, timeFormat: DateTimeFormatter): String? {
     val parts = buildList {
-        glance.screenTimeMillis?.let { add("${DurationFormat.short(it)} today") }
-        glance.nextAlarm?.let { alarm ->
+        if ("screen" in items) glance.screenTimeMillis?.let { add("${DurationFormat.short(it)} today") }
+        if ("alarm" in items) glance.nextAlarm?.let { alarm ->
             val withinADay = alarm.isBefore(now.plusHours(24))
             val day = if (withinADay) "" else alarm.format(DateTimeFormatter.ofPattern("EEE ")).lowercase()
             add("alarm $day${alarm.format(timeFormat)}")
         }
+        if ("battery" in items) glance.battery?.let { add("${it.percent}%" + if (it.charging) " charging" else "") }
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }

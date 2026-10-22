@@ -51,23 +51,25 @@ object Protection {
     }
 
     /**
-     * Turning a mode off, a later bedtime, an earlier wake or opening time, or a shorter
-     * morning all weaken. Bedtimes count from noon, so 00:30 is later than 23:00.
+     * Turning night off, a later bedtime, an earlier opening time, a shorter wind-down, or
+     * dropping grayscale or the red tint all weaken. Bedtimes count from noon, so 00:30 is
+     * later than 23:00. The reminder is only a nudge, so changing it is neutral.
      */
     fun dayModesWeaken(old: DayModeConfig, new: DayModeConfig): Boolean {
-        if (old.nightEnabled && !new.nightEnabled) return true
-        if (old.morningEnabled && !new.morningEnabled) return true
-        if (old.nightEnabled) {
-            if (fromNoon(new.bedWeekday) > fromNoon(old.bedWeekday)) return true
-            if (fromNoon(new.bedWeekend) > fromNoon(old.bedWeekend)) return true
-        }
-        if (old.nightEnabled || old.morningEnabled) {
-            if (new.wakeWeekday < old.wakeWeekday) return true
-            if (new.wakeWeekend < old.wakeWeekend) return true
-        }
-        if (old.morningEnabled && new.morningMinutes < old.morningMinutes) return true
+        if (!old.nightEnabled) return false
+        if (!new.nightEnabled) return true
+        if (fromNoon(new.bedWeekday) > fromNoon(old.bedWeekday)) return true
+        if (fromNoon(new.bedWeekend) > fromNoon(old.bedWeekend)) return true
+        if (new.openWeekday < old.openWeekday) return true
+        if (new.openWeekend < old.openWeekend) return true
+        if (new.windDownMinutes < old.windDownMinutes) return true
+        if (old.grayscale && !new.grayscale) return true
+        if (old.redTint && !new.redTint) return true
         return false
     }
+
+    /** A shorter first friction countdown weakens. */
+    fun frictionBaseWeakens(oldSeconds: Int, newSeconds: Int): Boolean = newSeconds < oldSeconds
 
     private fun fromNoon(minute: Int) = (minute - 12 * 60 + ScheduleRules.MINUTES_PER_DAY) % ScheduleRules.MINUTES_PER_DAY
 

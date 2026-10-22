@@ -55,15 +55,18 @@ class UnlockRepository(database: AppDatabase, scope: CoroutineScope) {
     fun passUntil(target: UnlockTarget, nowMillis: Long = System.currentTimeMillis()): Long? =
         passes.value.filter { it.target == target.key && it.untilMillis > nowMillis }.maxOfOrNull { it.untilMillis }
 
+    /** Early unlocks of blocks and early mornings this week; night passes only count for their own night. */
     suspend fun earlyUnlocksPastWeek(nowMillis: Long = System.currentTimeMillis()): Int =
-        dao.countSince(CHALLENGE, nowMillis - Duration.ofDays(7).toMillis())
+        dao.countSince(listOf(CHALLENGE, MORNING), nowMillis - Duration.ofDays(7).toMillis())
 
-    suspend fun grantChallengePass(target: UnlockTarget, reason: String, problems: Int, length: Duration) {
+    suspend fun nightPassesSince(sinceMillis: Long): Int = dao.countSince(listOf(NIGHT), sinceMillis)
+
+    suspend fun grantChallengePass(target: UnlockTarget, reason: String, problems: Int, length: Duration, kind: String = CHALLENGE) {
         val now = System.currentTimeMillis()
         dao.insertUnlock(
             UnlockLogEntity(
                 target = target.key,
-                kind = CHALLENGE,
+                kind = kind,
                 reason = reason.trim(),
                 problems = problems,
                 startedAt = now,
@@ -97,6 +100,8 @@ class UnlockRepository(database: AppDatabase, scope: CoroutineScope) {
 
     companion object {
         const val CHALLENGE = "challenge"
+        const val NIGHT = "night"
+        const val MORNING = "morning"
         const val EMERGENCY = "emergency"
     }
 }

@@ -93,6 +93,14 @@ data class BlockedDomainEntity(
     @PrimaryKey @ColumnInfo(name = "domain") val domain: String,
 )
 
+/** The first time the phone was opened each day, and whether that was early. */
+@Entity(tableName = "first_opens")
+data class FirstOpenEntity(
+    @PrimaryKey @ColumnInfo(name = "day") val day: Long,
+    @ColumnInfo(name = "at") val at: Long,
+    @ColumnInfo(name = "early") val early: Boolean,
+)
+
 /** One unlock of the phone. */
 @Entity(tableName = "pickups")
 data class PickupEntity(

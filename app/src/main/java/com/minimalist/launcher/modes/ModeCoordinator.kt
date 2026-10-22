@@ -1,7 +1,9 @@
 package com.minimalist.launcher.modes
 
 import com.minimalist.launcher.AppContainer
+import com.minimalist.launcher.data.protection.UnlockTarget
 import com.minimalist.launcher.domain.modes.DayModes
+import com.minimalist.launcher.domain.modes.LockKind
 import com.minimalist.launcher.domain.modes.PickupRules
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -9,18 +11,22 @@ import java.time.Duration
 import java.time.ZonedDateTime
 
 /**
- * Starts and ends modes on time: study hours, unplugging, too many pickups, the first unlock of
- * the morning. Runs from the guard service; every step is safe to repeat.
+ * Starts and ends modes on time: study hours, unplugging, too many pickups, the bedtime
+ * reminder and the morning screen once night ends. Every step is safe to repeat.
  */
 class ModeCoordinator(private val container: AppContainer) {
 
     private val lock = Mutex()
     private val modes get() = container.modes
 
+    /** Set by the guard service; posts the bedtime reminder. */
+    var onBedtimeReminder: ((bedtimeMillis: Long) -> Unit)? = null
+
     suspend fun tick() = lock.withLock { tickLocked() }
 
     suspend fun onUserPresent() = lock.withLock {
-        val nowMillis = System.currentTimeMillis()
+        val now = ZonedDateTime.now()
+        val nowMillis = now.toInstant().toEpochMilli()
         val state = modes.state.value
         val recent = modes.recordPickup(nowMillis)
             // Only pickups since the last Put away ended count towards the next one.
@@ -28,7 +34,7 @@ class ModeCoordinator(private val container: AppContainer) {
         if (container.currentLock() == null && PickupRules.tooMany(recent, nowMillis, state.pickupThreshold)) {
             putAwayFor(state.pickupMinutes, nowMillis)
         }
-        maybeStartMorningLocked()
+        recordFirstOpen(now)
         tickLocked()
     }
 
@@ -38,16 +44,16 @@ class ModeCoordinator(private val container: AppContainer) {
         tickLocked()
     }
 
-    /** Also called when the launcher comes to the front, in case the guard service isn't running. */
-    suspend fun maybeStartMorning() = lock.withLock { maybeStartMorningLocked() }
-
-    private suspend fun maybeStartMorningLocked() {
+    /** The first unlock with the phone open (night over, or passed early) is today's first open. */
+    private suspend fun recordFirstOpen(now: ZonedDateTime) {
+        val lock = container.currentLock()
+        val passed = container.unlocks.hasPass(UnlockTarget.Lock)
+        if (lock?.kind == LockKind.Night && !passed) return
         val state = modes.state.value
-        val now = ZonedDateTime.now()
-        if (container.currentLock() != null) return
-        if (DayModes.shouldStartMorning(state.dayModes, now, state.lastMorningDay)) {
-            modes.startMorning(now.toInstant().toEpochMilli(), now.toLocalDate().toEpochDay())
-        }
+        val nightNow = DayModes.night(state.dayModes, now)
+        val early = (nightNow != null) ||
+            (state.nightReleasedUntil != null && state.nightReleasedUntil > now.toInstant().toEpochMilli())
+        modes.recordFirstOpen(now.toLocalDate().toEpochDay(), now.toInstant().toEpochMilli(), early)
     }
 
     private suspend fun tickLocked() {
@@ -64,9 +70,19 @@ class ModeCoordinator(private val container: AppContainer) {
             }
         }
 
+        DayModes.reminderFor(state.dayModes, now)?.let { bedtime ->
+            val bedMillis = bedtime.toInstant().toEpochMilli()
+            if (state.lastReminderFor != bedMillis) {
+                modes.setLastReminderFor(bedMillis)
+                onBedtimeReminder?.invoke(bedMillis)
+            }
+        }
+
         container.changes.applyDue()
         val lock = container.currentLock()
-        modes.syncModeLog(lock, nowMillis)
+        val ended = modes.syncModeLog(lock, nowMillis)
+        // The phone has opened: show the morning screen once.
+        if (ended == LockKind.Night.name) modes.setMorningScreenDay(now.toLocalDate().toEpochDay())
         container.notifications.onTick(lock, nowMillis)
     }
 

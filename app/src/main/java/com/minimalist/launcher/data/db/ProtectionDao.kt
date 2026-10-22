@@ -15,8 +15,8 @@ interface ProtectionDao {
     @Query("SELECT * FROM unlock_log WHERE until_millis > :nowMillis ORDER BY until_millis DESC")
     fun observeActive(nowMillis: Long): Flow<List<UnlockLogEntity>>
 
-    @Query("SELECT COUNT(*) FROM unlock_log WHERE kind = :kind AND started_at >= :sinceMillis")
-    suspend fun countSince(kind: String, sinceMillis: Long): Int
+    @Query("SELECT COUNT(*) FROM unlock_log WHERE kind IN (:kinds) AND started_at >= :sinceMillis")
+    suspend fun countSince(kinds: List<String>, sinceMillis: Long): Int
 
     @Query("SELECT started_at FROM unlock_log WHERE kind = 'emergency' ORDER BY started_at DESC LIMIT 50")
     suspend fun emergencyTimes(): List<Long>

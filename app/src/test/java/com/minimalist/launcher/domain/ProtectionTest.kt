@@ -59,15 +59,20 @@ class ProtectionTest {
 
     @Test
     fun dayModes() {
-        val old = DayModeConfig(morningEnabled = true, nightEnabled = true, bedWeekday = 23 * 60, bedWeekend = 23 * 60, wakeWeekday = 7 * 60, wakeWeekend = 8 * 60)
+        val old = DayModeConfig(nightEnabled = true, bedWeekday = 23 * 60, bedWeekend = 23 * 60, openWeekday = 8 * 60, openWeekend = 9 * 60)
         assertTrue(Protection.dayModesWeaken(old, old.copy(nightEnabled = false)))
-        assertTrue(Protection.dayModesWeaken(old, old.copy(morningEnabled = false)))
         assertTrue(Protection.dayModesWeaken(old, old.copy(bedWeekday = 30))) // 00:30 is later
         assertFalse(Protection.dayModesWeaken(old, old.copy(bedWeekday = 22 * 60)))
-        assertTrue(Protection.dayModesWeaken(old, old.copy(wakeWeekday = 6 * 60)))
-        assertFalse(Protection.dayModesWeaken(old, old.copy(wakeWeekend = 9 * 60)))
+        assertTrue(Protection.dayModesWeaken(old, old.copy(openWeekday = 7 * 60)))
+        assertFalse(Protection.dayModesWeaken(old, old.copy(openWeekend = 10 * 60)))
+        assertTrue(Protection.dayModesWeaken(old, old.copy(windDownMinutes = 30)))
+        assertFalse(Protection.dayModesWeaken(old, old.copy(windDownMinutes = 90)))
+        assertTrue(Protection.dayModesWeaken(old, old.copy(grayscale = false)))
+        assertTrue(Protection.dayModesWeaken(old, old.copy(redTint = false)))
+        assertFalse(Protection.dayModesWeaken(old, old.copy(reminderMinutes = 0)))
         assertFalse(Protection.dayModesWeaken(old.copy(nightEnabled = false), old))
-        assertTrue(Protection.dayModesWeaken(old, old.copy(morningMinutes = 30)))
+        assertTrue(Protection.frictionBaseWeakens(10, 5))
+        assertFalse(Protection.frictionBaseWeakens(5, 10))
     }
 
     @Test

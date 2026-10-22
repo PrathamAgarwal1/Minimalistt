@@ -27,6 +27,7 @@ import com.minimalist.launcher.domain.LaunchableApp
 import com.minimalist.launcher.domain.blocking.BlockDecision
 import com.minimalist.launcher.domain.blocking.BlockReason
 import com.minimalist.launcher.domain.blocking.TimeScale
+import com.minimalist.launcher.domain.challenge.NightRules
 import com.minimalist.launcher.domain.modes.ActiveLock
 import com.minimalist.launcher.domain.modes.DayModes
 import com.minimalist.launcher.domain.modes.LockKind
@@ -136,7 +137,7 @@ class AppContainer(context: Context) {
 
     fun currentLock(): ActiveLock? {
         val state = modes.state.value
-        return DayModes.activeLock(state.putAwayUntil, state.morningStartedAt, state.dayModes, ZonedDateTime.now(), timeScale.value)
+        return DayModes.activeLock(state.putAwayUntil, state.nightReleasedUntil, state.dayModes, ZonedDateTime.now())
     }
 
     /**
@@ -184,8 +185,7 @@ class AppContainer(context: Context) {
             friction.apps.value.isNotEmpty() ||
             websites.customDomains.value.isNotEmpty() ||
             state.allowedBrowser != null ||
-            state.dayModes.nightEnabled ||
-            state.dayModes.morningEnabled
+            state.dayModes.nightEnabled
     }
 
     /** Minimalist is sending you to a Settings page to switch something on. */
@@ -224,20 +224,55 @@ class AppContainer(context: Context) {
         )
     }
 
-    /** The way past a mode early, from its lock screen. */
+    /**
+     * The way past a mode early, from its lock screen. Night has its own curve: harder the later
+     * it is, and in the last two hours before opening, solving it opens the phone for the morning.
+     */
     fun requestUnlock(lock: ActiveLock) {
-        unlockRequest.value = UnlockRequest(
-            target = UnlockTarget.Lock,
-            label = lock.kind.label,
-            timeLeftMillis = lock.untilMillis - System.currentTimeMillis(),
-            openPackage = null,
-        )
+        applicationScope.launch(Dispatchers.Main.immediate) {
+            val now = ZonedDateTime.now()
+            val nowMillis = now.toInstant().toEpochMilli()
+            val window = if (lock.kind == LockKind.Night) DayModes.night(modes.state.value.dayModes, now) else null
+            val night = window?.let {
+                val start = it.start.toInstant().toEpochMilli()
+                NightRules.challenge(
+                    sinceBedtimeMillis = nowMillis - start,
+                    untilOpeningMillis = lock.untilMillis - nowMillis,
+                    passesTonight = unlocks.nightPassesSince(start),
+                    earlyUnlocksPastWeek = unlocks.earlyUnlocksPastWeek(),
+                    scale = timeScale.value,
+                )
+            }
+            unlockRequest.value = UnlockRequest(
+                target = UnlockTarget.Lock,
+                label = lock.kind.label,
+                timeLeftMillis = lock.untilMillis - nowMillis,
+                openPackage = null,
+                night = night,
+                nightOpensAt = window?.opens?.toInstant()?.toEpochMilli(),
+            )
+        }
     }
 
     /** Solved: grant the pass (the block underneath keeps its end time) and open the app. */
     fun finishUnlock(request: UnlockRequest, reason: String, problems: Int, passMinutes: Int) {
         applicationScope.launch(Dispatchers.Main.immediate) {
-            unlocks.grantChallengePass(request.target, reason, problems, timeScale.value.pass(passMinutes))
+            val night = request.night
+            val opensAt = request.nightOpensAt
+            when {
+                night != null && night.opensMorning && opensAt != null -> {
+                    unlocks.grantChallengePass(
+                        UnlockTarget.Lock, reason, problems,
+                        Duration.ofMillis((opensAt - System.currentTimeMillis()).coerceAtLeast(0)),
+                        kind = UnlockRepository.MORNING,
+                    )
+                    modes.releaseNight(opensAt, java.time.LocalDate.now().toEpochDay())
+                }
+                night != null -> unlocks.grantChallengePass(
+                    UnlockTarget.Lock, reason, problems, timeScale.value.pass(night.passMinutes), kind = UnlockRepository.NIGHT,
+                )
+                else -> unlocks.grantChallengePass(request.target, reason, problems, timeScale.value.pass(passMinutes))
+            }
             challengeRunning.value = false
             unlockRequest.value = null
             request.openPackage?.let(::launchPackage)
@@ -342,7 +377,7 @@ class AppContainer(context: Context) {
     suspend fun resetAll() {
         blocking.clearEverything()
         friction.clear()
-        modes.endAllModes()
+        modes.endAllModes(DayModes.nightUntil(modes.state.value.dayModes, ZonedDateTime.now())?.toInstant()?.toEpochMilli())
         passes.clear()
         unlocks.endAllPasses()
         changes.clearPending()

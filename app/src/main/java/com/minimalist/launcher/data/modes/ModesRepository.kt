@@ -31,12 +31,18 @@ import java.time.LocalDate
 
 val Context.modesDataStore: DataStore<Preferences> by preferencesDataStore(name = "modes")
 
-/** Everything about Put away, morning, night, notification batching and urgent messages. */
+/** Everything about Put away, night, notification batching and urgent messages. */
 data class ModesState(
     val putAwayUntil: Long? = null,
-    val morningStartedAt: Long? = null,
-    val lastMorningDay: Long? = null,
+    /** The opening time of a night already opened early by a morning challenge. */
+    val nightReleasedUntil: Long? = null,
+    /** The day the morning screen is still to be shown on. */
+    val morningScreenDay: Long? = null,
+    val lastReminderFor: Long? = null,
+    /** True while grayscale is on because of wind-down or night, so it can be put back. */
+    val grayscaleByUs: Boolean = false,
     val dayModes: DayModeConfig = DayModeConfig(),
+    val frictionBaseSeconds: Int = 5,
     /** Put away after unplugging from USB, for this many minutes. 0 is off. */
     val unplugMinutes: Int = 0,
     /** Put away after this many pickups in an hour. 0 is off. */
@@ -66,15 +72,20 @@ class ModesRepository(
 
     private object Keys {
         val putAwayUntil = longPreferencesKey("put_away_until")
-        val morningStartedAt = longPreferencesKey("morning_started_at")
-        val lastMorningDay = longPreferencesKey("last_morning_day")
-        val morningEnabled = booleanPreferencesKey("morning_enabled")
-        val wakeWeekday = intPreferencesKey("wake_weekday")
-        val wakeWeekend = intPreferencesKey("wake_weekend")
-        val morningMinutes = intPreferencesKey("morning_minutes")
+        val nightReleasedUntil = longPreferencesKey("night_released_until")
+        val morningScreenDay = longPreferencesKey("morning_screen_day")
+        val lastReminderFor = longPreferencesKey("last_reminder_for")
+        val grayscaleByUs = booleanPreferencesKey("grayscale_by_us")
         val nightEnabled = booleanPreferencesKey("night_enabled")
         val bedWeekday = intPreferencesKey("bed_weekday")
         val bedWeekend = intPreferencesKey("bed_weekend")
+        val openWeekday = intPreferencesKey("open_weekday")
+        val openWeekend = intPreferencesKey("open_weekend")
+        val windDownMinutes = intPreferencesKey("wind_down_minutes")
+        val grayscale = booleanPreferencesKey("grayscale")
+        val redTint = booleanPreferencesKey("red_tint")
+        val reminderMinutes = intPreferencesKey("reminder_minutes")
+        val frictionBase = intPreferencesKey("friction_base_seconds")
         val unplugMinutes = intPreferencesKey("unplug_minutes")
         val pickupThreshold = intPreferencesKey("pickup_threshold")
         val pickupMinutes = intPreferencesKey("pickup_minutes")
@@ -94,17 +105,22 @@ class ModesRepository(
         val defaults = ModesState()
         ModesState(
             putAwayUntil = prefs[Keys.putAwayUntil],
-            morningStartedAt = prefs[Keys.morningStartedAt],
-            lastMorningDay = prefs[Keys.lastMorningDay],
+            nightReleasedUntil = prefs[Keys.nightReleasedUntil],
+            morningScreenDay = prefs[Keys.morningScreenDay],
+            lastReminderFor = prefs[Keys.lastReminderFor],
+            grayscaleByUs = prefs[Keys.grayscaleByUs] ?: false,
             dayModes = DayModeConfig(
-                morningEnabled = prefs[Keys.morningEnabled] ?: defaults.dayModes.morningEnabled,
-                wakeWeekday = prefs[Keys.wakeWeekday] ?: defaults.dayModes.wakeWeekday,
-                wakeWeekend = prefs[Keys.wakeWeekend] ?: defaults.dayModes.wakeWeekend,
-                morningMinutes = prefs[Keys.morningMinutes] ?: defaults.dayModes.morningMinutes,
                 nightEnabled = prefs[Keys.nightEnabled] ?: defaults.dayModes.nightEnabled,
                 bedWeekday = prefs[Keys.bedWeekday] ?: defaults.dayModes.bedWeekday,
                 bedWeekend = prefs[Keys.bedWeekend] ?: defaults.dayModes.bedWeekend,
+                openWeekday = prefs[Keys.openWeekday] ?: defaults.dayModes.openWeekday,
+                openWeekend = prefs[Keys.openWeekend] ?: defaults.dayModes.openWeekend,
+                windDownMinutes = prefs[Keys.windDownMinutes] ?: defaults.dayModes.windDownMinutes,
+                grayscale = prefs[Keys.grayscale] ?: defaults.dayModes.grayscale,
+                redTint = prefs[Keys.redTint] ?: defaults.dayModes.redTint,
+                reminderMinutes = prefs[Keys.reminderMinutes] ?: defaults.dayModes.reminderMinutes,
             ),
+            frictionBaseSeconds = prefs[Keys.frictionBase] ?: defaults.frictionBaseSeconds,
             unplugMinutes = prefs[Keys.unplugMinutes] ?: defaults.unplugMinutes,
             pickupThreshold = prefs[Keys.pickupThreshold] ?: defaults.pickupThreshold,
             pickupMinutes = prefs[Keys.pickupMinutes] ?: defaults.pickupMinutes,
@@ -131,25 +147,42 @@ class ModesRepository(
         dataStore.edit { it[Keys.putAwayUntil] = maxOf(it[Keys.putAwayUntil] ?: 0L, untilMillis) }
     }
 
-    suspend fun startMorning(nowMillis: Long, day: Long) {
+    /** A morning challenge was solved: tonight's night is over, and the morning screen is due. */
+    suspend fun releaseNight(opensAtMillis: Long, day: Long) {
         dataStore.edit {
-            it[Keys.morningStartedAt] = nowMillis
-            it[Keys.lastMorningDay] = day
+            it[Keys.nightReleasedUntil] = opensAtMillis
+            it[Keys.morningScreenDay] = day
         }
     }
+
+    suspend fun setMorningScreenDay(day: Long?) = edit { prefs ->
+        if (day == null) {
+            prefs.remove(Keys.morningScreenDay)
+        } else {
+            prefs[Keys.morningScreenDay] = day
+        }
+    }
+
+    suspend fun setLastReminderFor(millis: Long) = edit { it[Keys.lastReminderFor] = millis }
+
+    suspend fun setGrayscaleByUs(byUs: Boolean) = edit { it[Keys.grayscaleByUs] = byUs }
+
+    suspend fun setFrictionBase(seconds: Int) = edit { it[Keys.frictionBase] = seconds }
 
     suspend fun setStudyHandledUntil(millis: Long) = edit { it[Keys.studyHandledUntil] = millis }
 
     suspend fun setLastBatchAt(millis: Long) = edit { it[Keys.lastBatchAt] = millis }
 
     suspend fun setDayModes(config: DayModeConfig) = edit {
-        it[Keys.morningEnabled] = config.morningEnabled
-        it[Keys.wakeWeekday] = config.wakeWeekday
-        it[Keys.wakeWeekend] = config.wakeWeekend
-        it[Keys.morningMinutes] = config.morningMinutes
         it[Keys.nightEnabled] = config.nightEnabled
         it[Keys.bedWeekday] = config.bedWeekday
         it[Keys.bedWeekend] = config.bedWeekend
+        it[Keys.openWeekday] = config.openWeekday
+        it[Keys.openWeekend] = config.openWeekend
+        it[Keys.windDownMinutes] = config.windDownMinutes
+        it[Keys.grayscale] = config.grayscale
+        it[Keys.redTint] = config.redTint
+        it[Keys.reminderMinutes] = config.reminderMinutes
     }
 
     suspend fun setUnplugMinutes(minutes: Int) = edit { it[Keys.unplugMinutes] = minutes }
@@ -194,10 +227,12 @@ class ModesRepository(
         }
     }
 
-    /** Debug reset: ends every mode now. Settings stay. */
-    suspend fun endAllModes() = edit {
+    /** Debug reset: ends Put away and tonight's night now. Settings stay. */
+    suspend fun endAllModes(nightOpensAt: Long?) = edit {
         it.remove(Keys.putAwayUntil)
-        it.remove(Keys.morningStartedAt)
+        if (nightOpensAt != null) {
+            it[Keys.nightReleasedUntil] = nightOpensAt
+        }
     }
 
     // Mode log, so stats can show hours spent in each mode.
@@ -212,6 +247,12 @@ class ModesRepository(
     }
 
     suspend fun currentModeStartedAt(): Long? = dao.openMode()?.startedAt
+
+    suspend fun lastNightStartedAt(): Long? = dao.lastMode(com.minimalist.launcher.domain.modes.LockKind.Night.name)?.startedAt
+
+    suspend fun recordFirstOpen(day: Long, atMillis: Long, early: Boolean) = dao.recordFirstOpen(day, atMillis, early)
+
+    fun firstOpen(day: Long) = dao.observeFirstOpen(day)
 
     // Pickups
 

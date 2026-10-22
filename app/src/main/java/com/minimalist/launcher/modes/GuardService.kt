@@ -22,7 +22,9 @@ import com.minimalist.launcher.MinimalistApp
 import com.minimalist.launcher.R
 import com.minimalist.launcher.domain.DurationFormat
 import com.minimalist.launcher.domain.modes.ActiveLock
+import com.minimalist.launcher.domain.modes.DayModes
 import com.minimalist.launcher.domain.modes.LockKind
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -76,6 +78,7 @@ class GuardService : Service() {
             Context.RECEIVER_NOT_EXPORTED,
         )
         running = true
+        container.coordinator.onBedtimeReminder = ::postBedtimeReminder
         scope.launch {
             while (isActive) {
                 container.coordinator.tick()
@@ -91,20 +94,53 @@ class GuardService : Service() {
 
     override fun onDestroy() {
         running = false
+        container.coordinator.onBedtimeReminder = null
         runCatching { unregisterReceiver(receiver) }
         removeTint()
         scope.cancel()
         super.onDestroy()
     }
 
-    private fun refresh() {
+    private suspend fun refresh() {
         val lock = container.currentLock()
-        if (lock?.kind == LockKind.Night && Settings.canDrawOverlays(this)) showTint() else removeTint()
+        val config = container.modes.state.value.dayModes
+        val evening = lock?.kind == LockKind.Night || DayModes.windDownUntil(config, ZonedDateTime.now()) != null
+        val calm = evening && !container.emergencyActive()
+        if (calm && config.redTint && Settings.canDrawOverlays(this)) showTint() else removeTint()
+        updateGrayscale(calm && config.grayscale)
         val status = statusText(lock)
         if (status != lastStatus) {
             lastStatus = status
             getSystemService(NotificationManager::class.java).notify(STATUS_ID, statusNotification(lock))
         }
+    }
+
+    /** Grey through wind-down and night; afterwards, put back only what we changed. */
+    private suspend fun updateGrayscale(wanted: Boolean) {
+        val byUs = container.modes.state.value.grayscaleByUs
+        if (wanted && !Grayscale.isOn(this)) {
+            if (Grayscale.set(this, true)) container.modes.setGrayscaleByUs(true)
+        } else if (!wanted && byUs) {
+            Grayscale.set(this, false)
+            container.modes.setGrayscaleByUs(false)
+        }
+    }
+
+    private fun postBedtimeReminder(bedtimeMillis: Long) {
+        val manager = getSystemService(NotificationManager::class.java)
+        if (!manager.areNotificationsEnabled()) return
+        val minutes = ((bedtimeMillis - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1)
+        val time = java.time.Instant.ofEpochMilli(bedtimeMillis).atZone(java.time.ZoneId.systemDefault())
+        val clock = "%02d:%02d".format(time.hour, time.minute)
+        manager.notify(
+            REMINDER_ID,
+            Notification.Builder(this, SUMMARY_CHANNEL)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentTitle("Bedtime in $minutes min")
+                .setContentText("Night mode starts at $clock. Time to wind down.")
+                .setAutoCancel(true)
+                .build(),
+        )
     }
 
     private fun statusText(lock: ActiveLock?): String =
@@ -151,6 +187,7 @@ class GuardService : Service() {
     companion object {
         private const val TICK_MILLIS = 15_000L
         private const val STATUS_ID = 1
+        private const val REMINDER_ID = 3
         private const val TINT_COLOR = 0xFF6B1A00.toInt()
         const val STATUS_CHANNEL = "status"
         const val SUMMARY_CHANNEL = "summaries"

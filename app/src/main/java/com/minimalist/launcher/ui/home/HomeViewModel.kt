@@ -8,6 +8,8 @@ import com.minimalist.launcher.blocking.BlockerService
 import com.minimalist.launcher.data.settings.StoredFavouriteOrder
 import com.minimalist.launcher.domain.FavouriteOrder
 import com.minimalist.launcher.domain.LaunchableApp
+import com.minimalist.launcher.system.BatteryState
+import com.minimalist.launcher.system.batteryState
 import com.minimalist.launcher.system.minuteTicker
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,10 +32,11 @@ data class HomeState(
     val intention: String? = null,
 )
 
-/** The quiet line under the date: screen time so far and the next alarm. */
+/** The quiet line under the date: screen time so far, the next alarm, the battery. */
 data class Glance(
     val screenTimeMillis: Long? = null,
     val nextAlarm: LocalDateTime? = null,
+    val battery: BatteryState? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -43,6 +46,9 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     private val settings = container.settings
     private val alarmManager = container.appContext.getSystemService(AlarmManager::class.java)
 
+    val appearance = container.settings.appearance
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.minimalist.launcher.data.settings.Appearance())
+
     val now: StateFlow<LocalDateTime> = minuteTicker()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDateTime.now())
 
@@ -50,12 +56,14 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     val glance: StateFlow<Glance> = today
         .flatMapLatest { day -> container.usage.totalForegroundToday(container.appContext.packageName, day) }
-        .combine(now) { screenTime, _ ->
+        .combine(now) { screenTime, _ -> screenTime }
+        .combine(batteryState(container.appContext)) { screenTime, battery ->
             Glance(
                 screenTimeMillis = screenTime.takeIf { BlockerService.isEnabled(container.appContext) },
                 nextAlarm = alarmManager.nextAlarmClock?.triggerTime?.let {
                     LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault())
                 },
+                battery = battery,
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Glance())

@@ -14,8 +14,16 @@ class FrictionRulesTest {
 
     @Test
     fun countdownDoublesWithEachOpen() {
-        assertEquals(listOf(5, 10, 20, 40, 80, 160, 320, 320), (0..7).map { FrictionRules.countdownSeconds(it) })
-        assertEquals(320, FrictionRules.countdownSeconds(100))
+        assertEquals(listOf(5, 10, 20, 40, 80, 160, 320, 600), (0..7).map { FrictionRules.countdownSeconds(it) })
+        assertEquals(600, FrictionRules.countdownSeconds(100))
+    }
+
+    @Test
+    fun customStartAndWindDown() {
+        assertEquals(15, FrictionRules.countdownSeconds(0, baseSeconds = 15))
+        assertEquals(30, FrictionRules.countdownSeconds(1, baseSeconds = 15))
+        assertEquals(10, FrictionRules.countdownSeconds(0, windDown = true))
+        assertEquals(80, FrictionRules.countdownSeconds(3, windDown = true))
     }
 
     @Test

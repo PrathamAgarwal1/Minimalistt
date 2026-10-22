@@ -2,16 +2,14 @@ package com.minimalist.launcher.domain.modes
 
 import com.minimalist.launcher.domain.blocking.Schedule
 import com.minimalist.launcher.domain.blocking.ScheduleRules
-import com.minimalist.launcher.domain.blocking.TimeScale
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZonedDateTime
 
-/** The phone-wide locks. Only essentials (and for morning and night, one audio and one notes app) work. */
+/** The phone-wide locks. Only essentials (and at night, one audio and one notes app) work. */
 enum class LockKind(val label: String) {
     PutAway("Put away"),
-    Morning("Morning"),
     Night("Night"),
 
     /** While an unlock challenge runs: only calls, SMS and the clock, so no calculator or browser. */
@@ -20,15 +18,26 @@ enum class LockKind(val label: String) {
 
 data class ActiveLock(val kind: LockKind, val untilMillis: Long)
 
+/**
+ * Night runs from bedtime until the phone opens. The hour (or chosen length) before bedtime is
+ * wind-down: grayscale, red tint and slower friction.
+ */
 data class DayModeConfig(
-    val morningEnabled: Boolean = false,
-    val wakeWeekday: Int = 7 * 60,
-    val wakeWeekend: Int = 8 * 60 + 30,
-    val morningMinutes: Int = 60,
     val nightEnabled: Boolean = false,
     val bedWeekday: Int = 23 * 60,
     val bedWeekend: Int = 23 * 60 + 30,
+    val openWeekday: Int = 8 * 60,
+    val openWeekend: Int = 9 * 60,
+    /** 0 turns wind-down off. */
+    val windDownMinutes: Int = 60,
+    val grayscale: Boolean = true,
+    val redTint: Boolean = true,
+    /** Minutes before bedtime for the reminder; 0 is off. */
+    val reminderMinutes: Int = 15,
 )
+
+/** The night that is running: when it started and when the phone opens. */
+data class NightWindow(val start: ZonedDateTime, val opens: ZonedDateTime)
 
 object DayModes {
 
@@ -36,54 +45,69 @@ object DayModes {
     private val weekendMornings = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
     private val weekendNights = setOf(DayOfWeek.FRIDAY, DayOfWeek.SATURDAY)
 
-    /** Saturday and Sunday mornings use the weekend wake time. */
-    fun wakeMinute(config: DayModeConfig, date: LocalDate) =
-        if (date.dayOfWeek in weekendMornings) config.wakeWeekend else config.wakeWeekday
+    /** Saturday and Sunday mornings use the weekend opening time. */
+    fun openMinute(config: DayModeConfig, date: LocalDate) =
+        if (date.dayOfWeek in weekendMornings) config.openWeekend else config.openWeekday
 
     /** Friday and Saturday nights use the weekend bedtime. */
     fun bedMinute(config: DayModeConfig, date: LocalDate) =
         if (date.dayOfWeek in weekendNights) config.bedWeekend else config.bedWeekday
 
-    /**
-     * If night mode is running at [now], when it ends (the next wake time). A bedtime before
-     * noon is read as after midnight, so 00:30 means the small hours of the next day.
-     */
-    fun nightUntil(config: DayModeConfig, now: ZonedDateTime): ZonedDateTime? {
+    /** Bedtime for the night that starts on [night]. A bedtime before noon falls after midnight. */
+    fun bedtime(config: DayModeConfig, night: LocalDate, zoneOf: ZonedDateTime): ZonedDateTime {
+        val bed = bedMinute(config, night)
+        return if (bed < NOON) at(night.plusDays(1), bed, zoneOf) else at(night, bed, zoneOf)
+    }
+
+    /** The night running at [now], if any. */
+    fun night(config: DayModeConfig, now: ZonedDateTime): NightWindow? {
         if (!config.nightEnabled) return null
         val today = now.toLocalDate()
         for (night in listOf(today.minusDays(1), today)) {
+            val start = bedtime(config, night, now)
             val morning = night.plusDays(1)
-            val bed = bedMinute(config, night)
-            val start = if (bed < NOON) at(morning, bed, now) else at(night, bed, now)
-            val end = at(morning, wakeMinute(config, morning), now)
-            if (!now.isBefore(start) && now.isBefore(end)) return end
+            val opens = at(morning, openMinute(config, morning), now)
+            if (!now.isBefore(start) && now.isBefore(opens)) return NightWindow(start, opens)
         }
         return null
     }
 
-    /** Morning mode starts with the first unlock after wake time, at most six hours late, once a day. */
-    fun shouldStartMorning(config: DayModeConfig, now: ZonedDateTime, lastMorningDay: Long?): Boolean {
-        if (!config.morningEnabled) return false
+    /** If night mode is running at [now], when the phone opens. */
+    fun nightUntil(config: DayModeConfig, now: ZonedDateTime): ZonedDateTime? = night(config, now)?.opens
+
+    /** If wind-down is running at [now], the bedtime it leads to. */
+    fun windDownUntil(config: DayModeConfig, now: ZonedDateTime): ZonedDateTime? {
+        if (!config.nightEnabled || config.windDownMinutes <= 0) return null
         val today = now.toLocalDate()
-        if (lastMorningDay == today.toEpochDay()) return false
-        val wake = at(today, wakeMinute(config, today), now)
-        return !now.isBefore(wake) && now.isBefore(wake.plusHours(6)) && nightUntil(config, now) == null
+        return listOf(today.minusDays(1), today, today.plusDays(1))
+            .map { bedtime(config, it, now) }
+            .firstOrNull { bed -> now.isBefore(bed) && !now.isBefore(bed.minusMinutes(config.windDownMinutes.toLong())) }
     }
 
-    /** Put away wins over night, night over morning. */
+    /** The bedtime coming up within the reminder window, if any. */
+    fun reminderFor(config: DayModeConfig, now: ZonedDateTime): ZonedDateTime? {
+        if (!config.nightEnabled || config.reminderMinutes <= 0) return null
+        val today = now.toLocalDate()
+        return listOf(today.minusDays(1), today, today.plusDays(1))
+            .map { bedtime(config, it, now) }
+            .firstOrNull { bed -> now.isBefore(bed) && !now.isBefore(bed.minusMinutes(config.reminderMinutes.toLong())) }
+    }
+
+    /**
+     * Put away wins over night. A night already opened early by a morning challenge
+     * ([nightReleasedUntil] equal to its opening time) is over.
+     */
     fun activeLock(
         putAwayUntil: Long?,
-        morningStartedAt: Long?,
+        nightReleasedUntil: Long?,
         config: DayModeConfig,
         now: ZonedDateTime,
-        scale: TimeScale = TimeScale.REAL,
     ): ActiveLock? {
         val nowMillis = now.toInstant().toEpochMilli()
         putAwayUntil?.takeIf { it > nowMillis }?.let { return ActiveLock(LockKind.PutAway, it) }
-        nightUntil(config, now)?.let { return ActiveLock(LockKind.Night, it.toInstant().toEpochMilli()) }
-        if (config.morningEnabled && morningStartedAt != null) {
-            val end = morningStartedAt + scale.dailyLimit(Duration.ofMinutes(config.morningMinutes.toLong())).toMillis()
-            if (nowMillis in morningStartedAt until end) return ActiveLock(LockKind.Morning, end)
+        night(config, now)?.let { window ->
+            val opens = window.opens.toInstant().toEpochMilli()
+            if (nightReleasedUntil != opens) return ActiveLock(LockKind.Night, opens)
         }
         return null
     }

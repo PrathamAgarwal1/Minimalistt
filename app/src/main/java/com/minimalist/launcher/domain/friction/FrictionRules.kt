@@ -5,13 +5,22 @@ import com.minimalist.launcher.domain.blocking.TimeScale
 object FrictionRules {
 
     const val BASE_SECONDS = 5
-    const val MAX_SECONDS = 320
+    val BASE_OPTIONS = listOf(5, 10, 15, 30)
+    const val MAX_SECONDS = 600
     val SESSION_MINUTES = listOf(5, 10, 15)
 
-    /** 5 s for the first open of the day, then 10, 20, 40… capped at a little over five minutes. */
-    fun countdownSeconds(opensToday: Int, scale: TimeScale = TimeScale.REAL): Int {
-        val doubled = BASE_SECONDS.toLong() shl opensToday.coerceIn(0, 16)
-        val seconds = doubled.coerceAtMost(MAX_SECONDS.toLong()).toInt()
+    /**
+     * [baseSeconds] for the first open of the day, then twice as long each time (5, 10, 20,
+     * 40…), capped at ten minutes. Wind-down doubles it again.
+     */
+    fun countdownSeconds(
+        opensToday: Int,
+        scale: TimeScale = TimeScale.REAL,
+        baseSeconds: Int = BASE_SECONDS,
+        windDown: Boolean = false,
+    ): Int {
+        val doubled = baseSeconds.toLong() shl opensToday.coerceIn(0, 16)
+        val seconds = (doubled * if (windDown) 2 else 1).coerceAtMost(MAX_SECONDS.toLong()).toInt()
         return if (scale.testMode) (seconds / 5).coerceAtLeast(1) else seconds
     }
 

@@ -34,6 +34,7 @@ import com.minimalist.launcher.ui.friction.WorthScreen
 import com.minimalist.launcher.ui.home.HomeScreen
 import com.minimalist.launcher.MainActivity
 import com.minimalist.launcher.ui.modes.LockScreen
+import com.minimalist.launcher.ui.modes.MorningScreen
 import com.minimalist.launcher.ui.modes.ModeAppRole
 import com.minimalist.launcher.ui.modes.ModesSettingsScreen
 import com.minimalist.launcher.ui.modes.PutAwayStartScreen
@@ -43,6 +44,7 @@ import com.minimalist.launcher.ui.notifications.NotificationsSettingsScreen
 import com.minimalist.launcher.ui.notifications.UrgentScreen
 import com.minimalist.launcher.ui.websites.WebsitesScreen
 import com.minimalist.launcher.ui.search.SearchScreen
+import com.minimalist.launcher.ui.settings.AppearanceScreen
 import com.minimalist.launcher.ui.settings.SettingsScreen
 import com.minimalist.launcher.ui.settings.SettingsViewModel
 import kotlinx.coroutines.flow.Flow
@@ -73,6 +75,7 @@ sealed interface Destination {
     data object HeldNotifications : Destination { override val parent = Notifications }
     data object Websites : Destination { override val parent = Settings }
     data object Protection : Destination { override val parent = Settings }
+    data object Appearance : Destination { override val parent = Settings }
     data object PendingChanges : Destination { override val parent = Protection }
     data object Letters : Destination { override val parent = Protection }
     data object PutAway : Destination { override val parent = Home }
@@ -91,6 +94,7 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
     val lock by container.lock.collectAsStateWithLifecycle()
     val changeRequest by container.changes.request.collectAsStateWithLifecycle()
     val unlockRequest by container.unlockRequest.collectAsStateWithLifecycle()
+    val modesState by container.modes.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(homePresses) { homePresses.collect { destination = Destination.Home } }
     LaunchedEffect(openRequests) {
@@ -122,6 +126,10 @@ fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
             Notice.SettingsClosed -> SettingsClosedScreen(onClose = { container.notice.value = null })
             null -> Unit
         }
+        // Once the phone opens after night: the morning screen, shown once.
+        if (lock == null && notice == null && modesState.morningScreenDay == java.time.LocalDate.now().toEpochDay()) {
+            MorningScreen()
+        }
         changeRequest?.let { ChangeConfirmScreen(it) }
         unlockRequest?.let { ChallengeScreen(it) }
     }
@@ -150,7 +158,9 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onOpenNotifications = { navigate(Destination.Notifications) },
             onOpenWebsites = { navigate(Destination.Websites) },
             onOpenProtection = { navigate(Destination.Protection) },
+            onOpenAppearance = { navigate(Destination.Appearance) },
         )
+        Destination.Appearance -> AppearanceScreen(onBack = back)
         Destination.Protection -> ProtectionScreen(
             onBack = back,
             onOpenPending = { navigate(Destination.PendingChanges) },
@@ -176,7 +186,7 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
                 mode = PickerMode.Blockable,
                 note = when (screen.role) {
                     ModeAppRole.Essential -> "Works in every mode, e.g. a UPI app."
-                    else -> "Works during morning and night modes."
+                    else -> "Works during night mode."
                 },
                 onBack = back,
                 onPick = { app ->

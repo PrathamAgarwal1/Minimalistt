@@ -71,8 +71,7 @@ private fun LockScreenContent(lock: ActiveLock, onUrgent: () -> Unit) {
     val until = BlockingText.until(lock.untilMillis)
     when (lock.kind) {
         LockKind.PutAway, LockKind.Challenge -> PutAwayLock(left, until, onUrgent)
-        LockKind.Morning -> MorningLock(left, onUrgent)
-        LockKind.Night -> NightLock(left, until, onUrgent)
+        LockKind.Night -> NightLock(left, lock.untilMillis, onUrgent)
     }
 }
 
@@ -101,59 +100,7 @@ private fun PutAwayLock(left: String, until: String, onUrgent: () -> Unit) {
 }
 
 @Composable
-private fun MorningLock(left: String, onUrgent: () -> Unit) {
-    val container = appContainer()
-    val scope = rememberCoroutineScope()
-    val intention by container.settings.intention.collectAsStateWithLifecycle(null)
-    val habits by remember { container.modes.habitsToday() }.collectAsStateWithLifecycle(emptyList())
-    var draft by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(intention) {
-        if (draft == null) {
-            val today = intention?.takeIf { it.epochDay == LocalDate.now().toEpochDay() }?.text
-            draft = today ?: container.modes.yesterdaysFirstTask().orEmpty()
-        }
-    }
-    Screen {
-        Spacer(Modifier.height(56.dp))
-        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            Label("Good morning", style = Type.title)
-            Label("Morning mode · $left left", style = Type.small)
-            Spacer(Modifier.height(32.dp))
-            Label("What's the one thing you'll do today?", style = Type.body)
-            InputField(
-                value = draft.orEmpty(),
-                onValueChange = { draft = it.take(120) },
-                placeholder = "One thing",
-                style = Type.body.copy(color = Palette.Accent),
-                capitalization = KeyboardCapitalization.Sentences,
-                onImeAction = { scope.launch { container.settings.setIntention(draft.orEmpty(), LocalDate.now().toEpochDay()) } },
-            )
-            val saved = intention?.takeIf { it.epochDay == LocalDate.now().toEpochDay() }?.text
-            TextAction(
-                text = if (saved != null && saved == draft?.trim()) "Pinned to your home screen" else "Pin it for today",
-                onClick = { scope.launch { container.settings.setIntention(draft.orEmpty(), LocalDate.now().toEpochDay()) } },
-                style = Type.small,
-            )
-            if (habits.isNotEmpty()) {
-                Spacer(Modifier.height(24.dp))
-                Label("Habits", style = Type.label)
-                habits.forEach { (habit, done) ->
-                    TextAction(
-                        text = habit.title,
-                        onClick = { scope.launch { container.modes.setHabitDone(habit.id, !done) } },
-                        style = Type.body.copy(color = if (done) Palette.Accent else Palette.Text),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-        }
-        LockApps(LockKind.Morning, Type.small, onUrgent)
-        Spacer(Modifier.height(12.dp))
-    }
-}
-
-@Composable
-private fun NightLock(left: String, until: String, onUrgent: () -> Unit) {
+private fun NightLock(left: String, opensAtMillis: Long, onUrgent: () -> Unit) {
     val container = appContainer()
     val scope = rememberCoroutineScope()
     val day = remember { LocalDate.now().toEpochDay() }
@@ -162,6 +109,7 @@ private fun NightLock(left: String, until: String, onUrgent: () -> Unit) {
     val resisted by remember { container.friction.resistedSince(since) }.collectAsStateWithLifecycle(0)
     val feelings by remember { container.friction.pullsSince(since).map(WantingLiking::summarize) }.collectAsStateWithLifecycle(emptyList())
     val reflection by remember { container.modes.reflection(day) }.collectAsStateWithLifecycle(null)
+    val firstOpen by remember { container.modes.firstOpen(day) }.collectAsStateWithLifecycle(null)
     var wentWell by remember { mutableStateOf<String?>(null) }
     var firstTask by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(reflection) {
@@ -175,11 +123,16 @@ private fun NightLock(left: String, until: String, onUrgent: () -> Unit) {
         Spacer(Modifier.height(56.dp))
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Label("Night", style = Type.title.copy(color = NightPalette.Text))
-            Label("$left of quiet, $until", style = dim)
+            val opens = java.time.Instant.ofEpochMilli(opensAtMillis).atZone(java.time.ZoneId.systemDefault())
+            Label("Your phone opens at ${"%02d:%02d".format(opens.hour, opens.minute)}, in $left", style = dim)
             Spacer(Modifier.height(28.dp))
             Label("Today", style = Type.label.copy(color = NightPalette.Dim))
             Label("${DurationFormat.short(screenTime)} on your phone", style = text)
             Label("$resisted ${if (resisted == 1) "urge" else "urges"} resisted", style = text)
+            firstOpen?.let { open ->
+                val at = java.time.Instant.ofEpochMilli(open.at).atZone(java.time.ZoneId.systemDefault())
+                Label("Opened at ${"%02d:%02d".format(at.hour, at.minute)}${if (open.early) ", early" else ""}", style = dim)
+            }
             nightFeelings(container, feelings)?.let { Label(it, style = dim) }
 
             Spacer(Modifier.height(28.dp))
@@ -249,7 +202,10 @@ private fun LockApps(kind: LockKind, style: TextStyle, onUrgent: () -> Unit) {
     }
     val lock = container.lock.collectAsStateWithLifecycle().value
     SpacedRow {
-        lock?.let { TextAction("Solve problems to get past", onClick = { container.requestUnlock(it) }, style = style) }
+        lock?.let {
+            val label = if (it.kind == LockKind.Night) "Solve problems to get through" else "Solve problems to get past"
+            TextAction(label, onClick = { container.requestUnlock(it) }, style = style)
+        }
         EmergencyUnlockAction(style = style)
     }
 }

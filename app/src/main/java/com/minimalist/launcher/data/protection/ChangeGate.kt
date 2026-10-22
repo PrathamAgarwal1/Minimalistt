@@ -101,6 +101,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetAllowedBrowser -> Protection.browserWeakens(modes.allowedBrowser, change.packageName)
             is Change.RemoveDomain -> change.domain in container.websites.customDomains.value
             is Change.SetTestMode -> Protection.testModeWeakens(change.enabled)
+            is Change.SetFrictionBase -> Protection.frictionBaseWeakens(modes.frictionBaseSeconds, change.seconds)
         }
     }
 
@@ -127,6 +128,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetAllowedBrowser -> modes.setAllowedBrowser(change.packageName)
             is Change.RemoveDomain -> container.websites.remove(change.domain)
             is Change.SetTestMode -> container.settings.setTestMode(change.enabled)
+            is Change.SetFrictionBase -> modes.setFrictionBase(change.seconds)
         }
     }
 
@@ -141,7 +143,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetScheduleEnabled -> "Turn off a schedule"
             is Change.DeleteSchedule -> "Delete a schedule"
             is Change.RemoveFriction -> "Stop slowing down ${label(change.packageName)}"
-            is Change.SetDayModes -> "Loosen morning or night mode"
+            is Change.SetDayModes -> if (change.config.nightEnabled) "Loosen night mode" else "Turn off night mode"
             is Change.SetUnplug -> if (change.minutes == 0) {
                 "Stop Put away after unplugging"
             } else {
@@ -150,8 +152,8 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetPickups -> "Loosen Put away after pickups"
             is Change.SetStudyWindows -> "Remove study hours"
             is Change.SetEssentials -> "Let ${(change.packages - container.modes.state.value.essentials).joinToString { label(it) }} work in modes"
-            is Change.SetAudioApp -> "Let ${change.packageName?.let(label)} play in morning and night"
-            is Change.SetNotesApp -> "Let ${change.packageName?.let(label)} work in morning and night"
+            is Change.SetAudioApp -> "Let ${change.packageName?.let(label)} play at night"
+            is Change.SetNotesApp -> "Let ${change.packageName?.let(label)} work at night"
             is Change.AddVip -> "Add ${change.name} as a VIP"
             is Change.SetBatching -> if (change.enabled) {
                 "Deliver notifications at ${change.times.joinToString { ScheduleRules.formatMinute(it) }}"
@@ -162,6 +164,7 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetAllowedBrowser -> change.packageName?.let { "Switch the allowed browser to ${label(it)}" } ?: "Allow every browser"
             is Change.RemoveDomain -> "Unblock ${change.domain}"
             is Change.SetTestMode -> "Turn on test mode"
+            is Change.SetFrictionBase -> "Start friction countdowns at ${change.seconds} s"
         }
     }
 }

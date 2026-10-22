@@ -28,6 +28,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.data.protection.Change
 import com.minimalist.launcher.domain.blocking.ScheduleRules
 import com.minimalist.launcher.domain.modes.DayModeConfig
+import com.minimalist.launcher.domain.friction.FrictionRules
+import com.minimalist.launcher.modes.Grayscale
 import com.minimalist.launcher.modes.GuardService
 import com.minimalist.launcher.ui.appContainer
 import com.minimalist.launcher.ui.blocking.BlockingText
@@ -63,9 +65,11 @@ fun ModesSettingsScreen(
     val context = LocalContext.current
     var newHabit by remember { mutableStateOf("") }
     var canTint by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var canGray by remember { mutableStateOf(Grayscale.canControl(context)) }
     var guardRunning by remember { mutableStateOf(GuardService.running) }
     LifecycleResumeEffect(Unit) {
         canTint = Settings.canDrawOverlays(context)
+        canGray = Grayscale.canControl(context)
         guardRunning = GuardService.running
         onPauseOrDispose {}
     }
@@ -113,31 +117,92 @@ fun ModesSettingsScreen(
             }
             TextAction(text = "Add study hours", onClick = onAddStudyHours, style = Type.small)
 
-            SectionHeader("Morning")
+            SectionHeader("Night")
             TwoLineRow(
-                title = "Morning mode",
-                subtitle = if (day.morningEnabled) "Starts at your first unlock after waking" else "Off",
-                action = if (day.morningEnabled) "Turn off" else "Turn on",
-                onAction = { setDay(day.copy(morningEnabled = !day.morningEnabled)) },
+                title = "Night mode",
+                subtitle = if (day.nightEnabled) "From bedtime until your phone opens" else "Off",
+                action = if (day.nightEnabled) "Turn off" else "Turn on",
+                onAction = { setDay(day.copy(nightEnabled = !day.nightEnabled)) },
             )
+            Label("Bedtime", style = Type.body)
             Row {
-                TextAction("Weekdays ${ScheduleRules.formatMinute(day.wakeWeekday)}", onClick = {
-                    pickTime(context, day.wakeWeekday) { setDay(day.copy(wakeWeekday = it)) }
+                TextAction("Weeknights ${ScheduleRules.formatMinute(day.bedWeekday)}", onClick = {
+                    pickTime(context, day.bedWeekday) { setDay(day.copy(bedWeekday = it)) }
                 })
                 Spacer(Modifier.width(24.dp))
-                TextAction("Weekends ${ScheduleRules.formatMinute(day.wakeWeekend)}", onClick = {
-                    pickTime(context, day.wakeWeekend) { setDay(day.copy(wakeWeekend = it)) }
+                TextAction("Fri, Sat ${ScheduleRules.formatMinute(day.bedWeekend)}", onClick = {
+                    pickTime(context, day.bedWeekend) { setDay(day.copy(bedWeekend = it)) }
                 })
             }
+            Label("Phone opens at", style = Type.body)
+            Row {
+                TextAction("Weekdays ${ScheduleRules.formatMinute(day.openWeekday)}", onClick = {
+                    pickTime(context, day.openWeekday) { setDay(day.copy(openWeekday = it)) }
+                })
+                Spacer(Modifier.width(24.dp))
+                TextAction("Sat, Sun ${ScheduleRules.formatMinute(day.openWeekend)}", onClick = {
+                    pickTime(context, day.openWeekend) { setDay(day.copy(openWeekend = it)) }
+                })
+            }
+            Label(
+                "Only calls, messages, the clock (alarms always ring), your essentials and one audio and notes app work. " +
+                    "Getting through early takes a challenge that gets harder the later it is. In the last two hours, " +
+                    "solving one opens the phone for the morning.",
+                style = Type.small,
+            )
+
+            SectionHeader("Wind-down before bedtime")
             FlowRow {
-                Label("lasting ", style = Type.small)
-                listOf(30, 45, 60, 90).forEach { minutes ->
-                    Choice(BlockingText.minutes(minutes), selected = day.morningMinutes == minutes, onClick = {
-                        setDay(day.copy(morningMinutes = minutes))
+                listOf(0, 30, 60, 90).forEach { minutes ->
+                    Choice(if (minutes == 0) "Off" else BlockingText.minutes(minutes), selected = day.windDownMinutes == minutes, onClick = {
+                        setDay(day.copy(windDownMinutes = minutes))
                     })
                 }
             }
-            Label("Morning habits", style = Type.body)
+            Label("Friction countdowns are twice as long during wind-down.", style = Type.small)
+            TwoLineRow(
+                title = "Grayscale",
+                subtitle = when {
+                    !day.grayscale -> "Off"
+                    canGray -> "On during wind-down and night"
+                    else -> "Needs a one-time adb command, see below"
+                },
+                action = if (day.grayscale) "Turn off" else "Turn on",
+                onAction = { setDay(day.copy(grayscale = !day.grayscale)) },
+            )
+            if (day.grayscale && !canGray) Label(Grayscale.GRANT_COMMAND, style = Type.small)
+            TwoLineRow(
+                title = "Red tint",
+                subtitle = when {
+                    !day.redTint -> "Off"
+                    canTint -> "On during wind-down and night"
+                    else -> "Needs permission to display over apps"
+                },
+                action = if (day.redTint) "Turn off" else "Turn on",
+                onAction = { setDay(day.copy(redTint = !day.redTint)) },
+            )
+            if (day.redTint && !canTint) {
+                TextAction(text = "Allow display over apps", onClick = {
+                    container.grantSettingsPass()
+                    runCatching {
+                        context.startActivity(
+                            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                }, style = Type.small)
+            }
+            Label("Bedtime reminder", style = Type.body)
+            FlowRow {
+                listOf(0, 5, 15, 30).forEach { minutes ->
+                    Choice(if (minutes == 0) "Off" else "$minutes min before", selected = day.reminderMinutes == minutes, onClick = {
+                        setDay(day.copy(reminderMinutes = minutes))
+                    })
+                }
+            }
+
+            SectionHeader("Morning screen")
+            Label("When your phone opens: today's one thing, these habits, and last night's notifications.", style = Type.small)
             habits.forEach { (habit, _) ->
                 LabelledAction(label = habit.title, action = "Remove", onAction = { scope.launch { modes.deleteHabit(habit.id) } })
             }
@@ -154,35 +219,14 @@ fun ModesSettingsScreen(
                 },
             )
 
-            SectionHeader("Night")
-            TwoLineRow(
-                title = "Night mode",
-                subtitle = if (day.nightEnabled) "From bedtime until you wake" else "Off",
-                action = if (day.nightEnabled) "Turn off" else "Turn on",
-                onAction = { setDay(day.copy(nightEnabled = !day.nightEnabled)) },
-            )
-            Row {
-                TextAction("Weeknights ${ScheduleRules.formatMinute(day.bedWeekday)}", onClick = {
-                    pickTime(context, day.bedWeekday) { setDay(day.copy(bedWeekday = it)) }
-                })
-                Spacer(Modifier.width(24.dp))
-                TextAction("Fri, Sat ${ScheduleRules.formatMinute(day.bedWeekend)}", onClick = {
-                    pickTime(context, day.bedWeekend) { setDay(day.copy(bedWeekend = it)) }
-                })
-            }
-            if (canTint) {
-                Label("The screen gets a red tint at night.", style = Type.small)
-            } else {
-                Label("For the red tint at night, allow Minimalist to display over other apps.", style = Type.small)
-                TextAction(text = "Allow display over apps", onClick = {
-                    container.grantSettingsPass()
-                    runCatching {
-                        context.startActivity(
-                            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                    }
-                }, style = Type.small)
+            SectionHeader("Friction")
+            Label("The first countdown of the day; each open after doubles it.", style = Type.small)
+            FlowRow {
+                FrictionRules.BASE_OPTIONS.forEach { seconds ->
+                    Choice("$seconds s", selected = state.frictionBaseSeconds == seconds, onClick = {
+                        container.changes.submit(Change.SetFrictionBase(seconds))
+                    })
+                }
             }
 
             SectionHeader("Works during modes")
@@ -195,13 +239,13 @@ fun ModesSettingsScreen(
             }
             TextAction(text = "Add an essential", onClick = { onPickApp(ModeAppRole.Essential) }, style = Type.small)
             TwoLineRow(
-                title = "Audio app (morning and night)",
+                title = "Audio app (night)",
                 subtitle = state.audioApp?.let(container::labelFor) ?: "None",
                 action = if (state.audioApp == null) "Choose" else "Clear",
                 onAction = { if (state.audioApp == null) onPickApp(ModeAppRole.Audio) else container.changes.submit(Change.SetAudioApp(null)) },
             )
             TwoLineRow(
-                title = "Notes app (morning and night)",
+                title = "Notes app (night)",
                 subtitle = state.notesApp?.let(container::labelFor) ?: "None",
                 action = if (state.notesApp == null) "Choose" else "Clear",
                 onAction = { if (state.notesApp == null) onPickApp(ModeAppRole.Notes) else container.changes.submit(Change.SetNotesApp(null)) },

@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.minimalist.launcher.data.blocking.Notice
 import com.minimalist.launcher.domain.friction.FrictionRules
+import com.minimalist.launcher.domain.modes.DayModes
 import com.minimalist.launcher.ui.appContainer
 import com.minimalist.launcher.ui.components.Choice
 import com.minimalist.launcher.ui.components.InputField
@@ -54,7 +55,13 @@ fun FrictionScreen(notice: Notice.Friction) {
 
     LaunchedEffect(notice) {
         val opens = container.friction.opensToday(notice.packageName)
-        countdown = FrictionRules.countdownSeconds(opens, container.timeScale.value)
+        val modes = container.modes.state.value
+        countdown = FrictionRules.countdownSeconds(
+            opensToday = opens,
+            scale = container.timeScale.value,
+            baseSeconds = modes.frictionBaseSeconds,
+            windDown = DayModes.windDownUntil(modes.dayModes, java.time.ZonedDateTime.now()) != null,
+        )
     }
     BackHandler(onBack = ::notNow)
 

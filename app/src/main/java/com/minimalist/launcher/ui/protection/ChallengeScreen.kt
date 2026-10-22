@@ -72,7 +72,7 @@ fun ChallengeScreen(request: UnlockRequest) {
 
     LaunchedEffect(request) {
         recent = container.unlocks.earlyUnlocksPastWeek()
-        plan = ChallengeRules.forBlock(request.timeLeftMillis, recent, container.timeScale.value)
+        plan = request.night?.plan ?: ChallengeRules.forBlock(request.timeLeftMillis, recent, container.timeScale.value)
     }
 
     fun restart(message: String) {
@@ -153,10 +153,15 @@ private fun Intro(
     onStart: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    val title = when (request.target) {
-        is UnlockTarget.Lock -> "Get past ${request.label}"
-        is UnlockTarget.Domain -> "Open ${request.label} early"
-        else -> "Get into ${request.label} early"
+    val night = request.night
+    val title = when {
+        night?.opensMorning == true -> "Open your phone early"
+        night != null -> "A pass through the night"
+        else -> when (request.target) {
+            is UnlockTarget.Lock -> "Get past ${request.label}"
+            is UnlockTarget.Domain -> "Open ${request.label} early"
+            else -> "Get into ${request.label} early"
+        }
     }
     Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
         Label(title, style = Type.title)
@@ -167,7 +172,9 @@ private fun Intro(
         Spacer(Modifier.height(16.dp))
         if (plan != null) {
             Label("${plan.count} ${if (plan.count == 1) "problem" else "problems"}" + describe(plan), style = Type.body)
-            if (recent > 0) {
+            if (night != null && !night.opensMorning) {
+                Label("Harder the later it gets, and 2 more for each pass already used tonight.", style = Type.small)
+            } else if (recent > 0) {
                 Label("Includes ${recent * ChallengeRules.EXTRA_PER_RECENT_UNLOCK} extra for $recent early ${if (recent == 1) "unlock" else "unlocks"} this week.", style = Type.small)
             }
         }
@@ -177,12 +184,18 @@ private fun Intro(
             style = Type.small,
         )
         SectionHeader("Pass")
-        Row {
-            ChallengeRules.PASS_MINUTES.forEach { option ->
-                Choice("$option min", selected = option == minutes, onClick = { onMinutes(option) })
+        when {
+            night?.opensMorning == true -> Label("Solving it opens your phone for the rest of the morning.", style = Type.body)
+            night != null -> Label("${night.passMinutes} minutes, then night mode carries on.", style = Type.body)
+            else -> {
+                Row {
+                    ChallengeRules.PASS_MINUTES.forEach { option ->
+                        Choice("$option min", selected = option == minutes, onClick = { onMinutes(option) })
+                    }
+                }
+                Label("When it ends, the block carries on as before.", style = Type.small)
             }
         }
-        Label("When it ends, the block carries on as before.", style = Type.small)
         SectionHeader("Why")
         InputField(
             value = reason,

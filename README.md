@@ -13,8 +13,9 @@ Work happens in phases. **Done:**
 5. Held notifications, batching, VIPs, urgent WhatsApp and quick reply
 6. Website blocking and the single allowed browser
 7a. Unlock challenges, 24-hour cooldowns, letters, emergency unlock, Settings guard, Device Admin
+7b. Night from bedtime until the phone opens, wind-down, the morning screen; appearance options
 
-Next: the night and morning rework (7b), earned screen time and stats, the setup wizard.
+Next: earned screen time and stats, the setup wizard.
 
 ## Get the APK
 
@@ -78,6 +79,32 @@ All of them are optional; each feature says what it needs on its settings page.
 - **Display over other apps** (Settings → Put away, morning and night): the red tint at night.
 - **ColorOS background limits**: Settings → Apps → Minimalist → allow auto-launch and
   *Allow background activity* in Battery, so the guard service isn't stopped.
+
+## Night and morning
+
+Settings → Put away and night: a bedtime and a "phone opens at" time, with separate weekend
+times. The wind-down before bedtime (30, 60 or 90 minutes) turns on grayscale and the red tint and
+doubles friction countdowns; a reminder comes before bedtime. Through the night only calls,
+messages, the clock (alarms always ring), your essentials and one audio and notes app work.
+
+Getting through early takes a challenge that grows with how late it is: 3 easy problems for a
+15-minute pass just after bedtime, up to 15 hard plus a typing passage for 5 minutes after three
+hours. Each pass already used that night adds 2. In the last two hours before opening, the
+challenge follows the time left, and solving it opens the phone for the morning.
+
+When the phone opens, the morning screen shows once: today's one thing (pinned on home all day),
+your habits, and what came in overnight. The time you first opened the phone is recorded.
+
+**Grayscale** needs one adb command, once:
+
+```
+adb shell pm grant com.minimalist.launcher android.permission.WRITE_SECURE_SETTINGS
+```
+
+## Appearance
+
+Settings → Appearance: text size, accent colour, clock weight, centred or left-aligned home, and
+which of screen time, next alarm and battery show under the date.
 
 ## Getting in early, and loosening things
 

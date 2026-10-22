@@ -18,6 +18,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- The red tint at night. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Grayscale at wind-down and night. Granted once over adb; works without it, minus grayscale. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Package visibility: only apps with a launcher entry, no QUERY_ALL_PACKAGES. -->
     <queries>

@@ -1,5 +1,7 @@
 package com.minimalist.launcher.data.protection
 
+import com.minimalist.launcher.domain.challenge.NightChallenge
+
 /** Someone asked to get past a block early; the challenge screen takes it from here. */
 data class UnlockRequest(
     val target: UnlockTarget,
@@ -7,4 +9,7 @@ data class UnlockRequest(
     val timeLeftMillis: Long,
     /** Opened once the pass is granted. */
     val openPackage: String?,
+    /** Set for night mode: its own curve, a fixed pass, or opening the phone for the morning. */
+    val night: NightChallenge? = null,
+    val nightOpensAt: Long? = null,
 )

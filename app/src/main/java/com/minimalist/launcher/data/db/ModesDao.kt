@@ -18,6 +18,15 @@ interface ModesDao {
     @Query("UPDATE mode_log SET ended_at = :endedAt WHERE id = :id")
     suspend fun endMode(id: Long, endedAt: Long)
 
+    @Query("INSERT OR IGNORE INTO first_opens (day, at, early) VALUES (:day, :at, :early)")
+    suspend fun recordFirstOpen(day: Long, at: Long, early: Boolean)
+
+    @Query("SELECT * FROM first_opens WHERE day = :day")
+    fun observeFirstOpen(day: Long): Flow<FirstOpenEntity?>
+
+    @Query("SELECT * FROM mode_log WHERE kind = :kind ORDER BY started_at DESC LIMIT 1")
+    suspend fun lastMode(kind: String): ModeLogEntity?
+
     @Query("INSERT OR IGNORE INTO pickups (at) VALUES (:at)")
     suspend fun insertPickup(at: Long)
 

@@ -41,6 +41,7 @@ fun SettingsScreen(
     onOpenNotifications: () -> Unit,
     onOpenWebsites: () -> Unit,
     onOpenProtection: () -> Unit,
+    onOpenAppearance: () -> Unit,
     viewModel: SettingsViewModel = appViewModel { SettingsViewModel(it) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -71,10 +72,11 @@ fun SettingsScreen(
                 Label("Blocking is off. Open the page above to turn it on.", style = Type.small)
             }
 
-            TextAction(text = "Put away, morning and night", onClick = onOpenModes, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Put away and night", onClick = onOpenModes, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Notifications and VIPs", onClick = onOpenNotifications, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Websites and browsers", onClick = onOpenWebsites, modifier = Modifier.fillMaxWidth())
             TextAction(text = "Protection, letters and emergency", onClick = onOpenProtection, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Appearance", onClick = onOpenAppearance, modifier = Modifier.fillMaxWidth())
 
             SectionHeader("Home app")
             if (isHome) {

@@ -30,6 +30,7 @@ sealed interface Change {
     data class SetAllowedBrowser(val packageName: String?) : Change
     data class RemoveDomain(val domain: String) : Change
     data class SetTestMode(val enabled: Boolean) : Change
+    data class SetFrictionBase(val seconds: Int) : Change
 }
 
 /** Stores a queued change as JSON so it survives restarts until its cooldown ends. */
@@ -74,6 +75,7 @@ object ChangeCodec {
             is Change.SetAllowedBrowser -> change.packageName?.let { put("package", it) }
             is Change.RemoveDomain -> put("domain", change.domain)
             is Change.SetTestMode -> put("enabled", change.enabled)
+            is Change.SetFrictionBase -> put("seconds", change.seconds)
         }
     }.toString()
 
@@ -103,6 +105,7 @@ object ChangeCodec {
             "SetAllowedBrowser" -> Change.SetAllowedBrowser(pkg)
             "RemoveDomain" -> Change.RemoveDomain(json.getString("domain"))
             "SetTestMode" -> Change.SetTestMode(json.getBoolean("enabled"))
+            "SetFrictionBase" -> Change.SetFrictionBase(json.getInt("seconds"))
             else -> null
         }
     }.getOrNull()
@@ -128,24 +131,31 @@ object ChangeCodec {
     )
 
     private fun dayModes(config: DayModeConfig) = JSONObject().apply {
-        put("morningEnabled", config.morningEnabled)
-        put("wakeWeekday", config.wakeWeekday)
-        put("wakeWeekend", config.wakeWeekend)
-        put("morningMinutes", config.morningMinutes)
         put("nightEnabled", config.nightEnabled)
         put("bedWeekday", config.bedWeekday)
         put("bedWeekend", config.bedWeekend)
+        put("openWeekday", config.openWeekday)
+        put("openWeekend", config.openWeekend)
+        put("windDownMinutes", config.windDownMinutes)
+        put("grayscale", config.grayscale)
+        put("redTint", config.redTint)
+        put("reminderMinutes", config.reminderMinutes)
     }
 
-    private fun dayModes(json: JSONObject) = DayModeConfig(
-        morningEnabled = json.getBoolean("morningEnabled"),
-        wakeWeekday = json.getInt("wakeWeekday"),
-        wakeWeekend = json.getInt("wakeWeekend"),
-        morningMinutes = json.getInt("morningMinutes"),
-        nightEnabled = json.getBoolean("nightEnabled"),
-        bedWeekday = json.getInt("bedWeekday"),
-        bedWeekend = json.getInt("bedWeekend"),
-    )
+    private fun dayModes(json: JSONObject): DayModeConfig {
+        val defaults = DayModeConfig()
+        return DayModeConfig(
+            nightEnabled = json.optBoolean("nightEnabled", defaults.nightEnabled),
+            bedWeekday = json.optInt("bedWeekday", defaults.bedWeekday),
+            bedWeekend = json.optInt("bedWeekend", defaults.bedWeekend),
+            openWeekday = json.optInt("openWeekday", defaults.openWeekday),
+            openWeekend = json.optInt("openWeekend", defaults.openWeekend),
+            windDownMinutes = json.optInt("windDownMinutes", defaults.windDownMinutes),
+            grayscale = json.optBoolean("grayscale", defaults.grayscale),
+            redTint = json.optBoolean("redTint", defaults.redTint),
+            reminderMinutes = json.optInt("reminderMinutes", defaults.reminderMinutes),
+        )
+    }
 
     private fun JSONArray.strings() = (0 until length()).map { getString(it) }
 

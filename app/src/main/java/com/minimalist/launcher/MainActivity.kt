@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
         // The launcher is in front: a safe moment to (re)start the guard service.
         GuardService.start(this)
         val container = (application as MinimalistApp).container
-        lifecycleScope.launch { container.coordinator.maybeStartMorning() }
+        lifecycleScope.launch { container.coordinator.tick() }
     }
 
     override fun onNewIntent(intent: Intent) {
