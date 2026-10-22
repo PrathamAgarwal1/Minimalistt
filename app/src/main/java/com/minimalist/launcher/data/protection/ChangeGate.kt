@@ -100,7 +100,6 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetNotesApp -> Protection.modeAppWeakens(modes.notesApp, change.packageName)
             is Change.AddVip -> true
             is Change.SetBatching -> Protection.batchingWeakens(modes.batchingEnabled, modes.batchTimes, change.enabled, change.times)
-            is Change.SetUrgentPerSession -> Protection.urgentWeakens(modes.urgentPerSession, change.count)
             is Change.SetAllowedBrowser -> Protection.browserWeakens(modes.allowedBrowser, change.packageName)
             is Change.RemoveDomain -> change.domain in container.websites.customDomains.value
             is Change.SetTestMode -> Protection.testModeWeakens(change.enabled)
@@ -130,7 +129,6 @@ class ChangeGate(private val container: AppContainer) {
             is Change.SetNotesApp -> modes.setNotesApp(change.packageName)
             is Change.AddVip -> container.notifications.addVip(change.name, change.phone)
             is Change.SetBatching -> modes.setBatching(change.enabled, change.times)
-            is Change.SetUrgentPerSession -> modes.setUrgentPerSession(change.count)
             is Change.SetAllowedBrowser -> modes.setAllowedBrowser(change.packageName)
             is Change.RemoveDomain -> container.websites.remove(change.domain)
             is Change.SetTestMode -> container.settings.setTestMode(change.enabled)
@@ -169,7 +167,6 @@ class ChangeGate(private val container: AppContainer) {
             } else {
                 "Stop batching notifications"
             }
-            is Change.SetUrgentPerSession -> "Allow ${change.count} urgent messages per session"
             is Change.SetAllowedBrowser -> change.packageName?.let { "Switch the allowed browser to ${label(it)}" } ?: "Allow every browser"
             is Change.RemoveDomain -> "Unblock ${change.domain}"
             is Change.SetTestMode -> "Turn on test mode"

@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.domain.DurationFormat
@@ -30,7 +29,6 @@ import com.minimalist.launcher.ui.components.Label
 import com.minimalist.launcher.ui.components.OptionsDialog
 import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.TextAction
-import com.minimalist.launcher.ui.components.TextInputDialog
 import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Type
 import java.time.LocalDateTime
@@ -57,7 +55,6 @@ fun HomeScreen(
     val horizontal = if (look.centred) Alignment.CenterHorizontally else Alignment.Start
     val itemAlignment = if (look.centred) Alignment.Center else Alignment.CenterStart
     val context = LocalContext.current
-    var editingIntention by remember { mutableStateOf(false) }
     var optionsFor by remember { mutableStateOf<LaunchableApp?>(null) }
     var quickMenu by remember { mutableStateOf(false) }
 
@@ -100,27 +97,7 @@ fun HomeScreen(
                     alignment = itemAlignment,
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            val intention = state.intention
-            if (!look.showIntention) {
-                Unit
-            } else if (intention != null) {
-                TextAction(
-                    text = intention,
-                    onClick = { editingIntention = true },
-                    style = Type.small.copy(color = Palette.Text, textAlign = if (look.centred) TextAlign.Center else TextAlign.Start),
-                    alignment = itemAlignment,
-                )
-            } else if (state.loaded) {
-                TextAction(
-                    text = "What's the one thing you'll do today?",
-                    onClick = { editingIntention = true },
-                    style = Type.small.copy(color = Palette.Faint),
-                    alignment = itemAlignment,
-                )
-            }
-
-            Spacer(Modifier.height(36.dp))
+            Spacer(Modifier.height(48.dp))
             state.favourites.forEach { app ->
                 TextAction(
                     text = app.label,
@@ -143,16 +120,6 @@ fun HomeScreen(
             TextAction(text = "Urgent message", onClick = onUrgentMessage, style = Type.small)
         }
         Spacer(Modifier.height(12.dp))
-    }
-
-    if (editingIntention) {
-        TextInputDialog(
-            title = "What's the one thing you'll do today?",
-            initial = state.intention.orEmpty(),
-            placeholder = "One thing",
-            onSave = viewModel::setIntention,
-            onDismiss = { editingIntention = false },
-        )
     }
 
     if (quickMenu) {

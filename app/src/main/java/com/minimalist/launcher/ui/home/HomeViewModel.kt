@@ -1,6 +1,5 @@
 package com.minimalist.launcher.ui.home
 
-import com.minimalist.launcher.system.TrustedClock
 import android.app.AlarmManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,7 +29,6 @@ import java.time.ZoneId
 data class HomeState(
     val loaded: Boolean = false,
     val favourites: List<LaunchableApp> = emptyList(),
-    val intention: String? = null,
 )
 
 /** The quiet line under the date: screen time so far, the next alarm, the battery. */
@@ -76,9 +74,8 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         apps.installedApps.filterNotNull(),
         apps.prefs,
         settings.favouriteOrder,
-        settings.intention,
         today,
-    ) { installed, prefs, stored, intention, day ->
+    ) { installed, prefs, stored, day ->
         val favouriteKeys = prefs.filter { it.favourite }.map { it.appKey }.toSet()
         val arranged = StoredFavouriteOrder(
             keys = FavouriteOrder.arrange(favouriteKeys, stored.keys, stored.epochDay, day),
@@ -90,7 +87,6 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         HomeState(
             loaded = true,
             favourites = arranged.keys.mapNotNull(byKey::get),
-            intention = intention?.takeIf { it.epochDay == day }?.text,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 
@@ -104,9 +100,5 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     fun hide(app: LaunchableApp) {
         viewModelScope.launch { apps.setHidden(app.key, app.packageName, true) }
-    }
-
-    fun setIntention(text: String) {
-        viewModelScope.launch { settings.setIntention(text, TrustedClock.today().toEpochDay()) }
     }
 }

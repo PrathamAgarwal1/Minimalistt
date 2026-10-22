@@ -93,7 +93,6 @@ class ProtectionTest {
         assertTrue(Protection.batchingWeakens(true, listOf(780), false, listOf(780)))
         assertTrue(Protection.batchingWeakens(true, listOf(780), true, listOf(780, 600)))
         assertFalse(Protection.batchingWeakens(true, listOf(780, 1200), true, listOf(780)))
-        assertTrue(Protection.urgentWeakens(3, 5))
         assertTrue(Protection.testModeWeakens(true))
         assertFalse(Protection.testModeWeakens(false))
     }

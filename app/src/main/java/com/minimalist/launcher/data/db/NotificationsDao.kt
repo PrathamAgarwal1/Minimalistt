@@ -39,8 +39,5 @@ interface NotificationsDao {
     suspend fun logUrgent(entry: UrgentLogEntity): Long
 
     @Query("SELECT COUNT(*) FROM urgent_log WHERE sent_at >= :sinceMillis")
-    suspend fun urgentSince(sinceMillis: Long): Int
-
-    @Query("SELECT COUNT(*) FROM urgent_log WHERE sent_at >= :sinceMillis")
     fun observeUrgentSince(sinceMillis: Long): Flow<Int>
 }

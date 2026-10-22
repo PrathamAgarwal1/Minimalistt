@@ -317,10 +317,9 @@ class AppContainer(context: Context) {
 
     /**
      * Opens WhatsApp on [vip]'s chat with [text] typed in, past any block or mode, for one minute.
-     * Returns false when this session's urgent messages are used up.
+     * Returns false if WhatsApp couldn't be opened.
      */
     suspend fun sendUrgent(vip: Vip, text: String): Boolean {
-        if (notifications.urgentLeft() <= 0) return false
         val whatsapp = NotificationsRepository.WHATSAPP_PACKAGES.firstOrNull { packageName ->
             apps.installedApps.value?.any { it.packageName == packageName } == true
         }
@@ -334,10 +333,9 @@ class AppContainer(context: Context) {
         return runCatching { appContext.startActivity(intent) }.isSuccess
     }
 
-    /** Replies through WhatsApp's notification without opening it. Counts as an urgent message. */
+    /** Replies through WhatsApp's notification without opening it. Logged as an urgent message. */
     suspend fun sendQuickReply(vipId: Long, text: String): Boolean {
         val message = notifications.vipMessages.value[vipId] ?: return false
-        if (notifications.urgentLeft() <= 0) return false
         val sent = notifications.sendQuickReply(message, text)
         if (sent) notifications.logUrgent(message.vip, currentLock()?.kind?.name)
         return sent

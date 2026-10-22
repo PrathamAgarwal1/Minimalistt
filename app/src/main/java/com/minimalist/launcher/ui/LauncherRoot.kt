@@ -47,6 +47,7 @@ import com.minimalist.launcher.ui.websites.WebsitesScreen
 import com.minimalist.launcher.ui.search.SearchScreen
 import com.minimalist.launcher.ui.earn.EarnScreen
 import com.minimalist.launcher.ui.settings.AppearanceScreen
+import com.minimalist.launcher.ui.settings.HomeAppsScreen
 import com.minimalist.launcher.ui.setup.SetupScreen
 import com.minimalist.launcher.ui.stats.StatsScreen
 import com.minimalist.launcher.ui.stats.WeeklyReviewScreen
@@ -65,7 +66,8 @@ sealed interface Destination {
     data object Home : Destination { override val parent = null }
     data object Search : Destination { override val parent = Home }
     data object Settings : Destination { override val parent = Home }
-    data object FavouritePicker : Destination { override val parent = Settings }
+    data object HomeApps : Destination { override val parent = Settings }
+    data object FavouritePicker : Destination { override val parent = HomeApps }
     data object Blocking : Destination { override val parent = Settings }
     data object BlockPicker : Destination { override val parent = Blocking }
     data class BlockDuration(val packageName: String) : Destination { override val parent = BlockPicker }
@@ -192,7 +194,7 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
         )
         Destination.Settings -> SettingsScreen(
             onBack = back,
-            onAddFavourite = { navigate(Destination.FavouritePicker) },
+            onOpenHomeApps = { navigate(Destination.HomeApps) },
             onOpenBlocking = { navigate(Destination.Blocking) },
             onOpenModes = { navigate(Destination.Modes) },
             onOpenNotifications = { navigate(Destination.Notifications) },
@@ -204,6 +206,7 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onOpenSetup = { navigate(Destination.Setup) },
             onOpenWeeklyReview = { navigate(Destination.WeeklyReview) },
         )
+        Destination.HomeApps -> HomeAppsScreen(onBack = back, onAddFavourite = { navigate(Destination.FavouritePicker) })
         Destination.Earn -> EarnScreen(onBack = back, onAddApp = { navigate(Destination.EarnPicker) })
         Destination.EarnPicker -> {
             val container = appContainer()

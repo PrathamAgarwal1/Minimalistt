@@ -77,11 +77,6 @@ fun AppearanceScreen(onBack: () -> Unit) {
                     Choice(name, selected = on, onClick = { set(look.copy(glance = if (on) look.glance - key else look.glance + key)) })
                 }
             }
-            TextAction(
-                text = if (look.showIntention) "Hide today's intention line" else "Show today's intention line",
-                onClick = { set(look.copy(showIntention = !look.showIntention)) },
-                style = Type.small,
-            )
             Spacer(Modifier.height(24.dp))
         }
     }

@@ -18,12 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.data.notifications.NotificationsRepository
 import com.minimalist.launcher.ui.appContainer
-import com.minimalist.launcher.ui.components.InputField
 import com.minimalist.launcher.ui.components.Label
 import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.TextAction
@@ -34,31 +32,21 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-/** Shown once when the phone opens in the morning: one intention, the habits, last night's notifications. */
+/** Shown once when the phone opens in the morning: the habits and last night's notifications. */
 @Composable
 fun MorningScreen() {
     val container = appContainer()
     val scope = rememberCoroutineScope()
     val today = remember { TrustedClock.today().toEpochDay() }
-    val intention by container.settings.intention.collectAsStateWithLifecycle(null)
     val habits by remember { container.modes.habitsToday() }.collectAsStateWithLifecycle(emptyList())
     val held by remember { container.notifications.held }.collectAsStateWithLifecycle(emptyList())
     val firstOpen by remember { container.modes.firstOpen(today) }.collectAsStateWithLifecycle(null)
     var nightStart by remember { mutableStateOf<Long?>(null) }
-    var draft by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         nightStart = container.modes.lastNightStartedAt()
-        if (draft == null) draft = container.modes.yesterdaysFirstTask().orEmpty()
-    }
-    LaunchedEffect(intention) {
-        intention?.takeIf { it.epochDay == today }?.let { draft = it.text }
-    }
-    fun pin() {
-        scope.launch { container.settings.setIntention(draft.orEmpty(), today) }
     }
     fun done() {
-        if (!draft.isNullOrBlank()) pin()
         scope.launch { container.modes.setMorningScreenDay(null) }
     }
     BackHandler(onBack = ::done)
@@ -79,20 +67,8 @@ fun MorningScreen() {
                     style = Type.small,
                 )
             }
-            Spacer(Modifier.height(32.dp))
-            Label("What's the one thing you'll do today?", style = Type.body)
-            InputField(
-                value = draft.orEmpty(),
-                onValueChange = { draft = it.take(120) },
-                placeholder = "One thing",
-                style = Type.body.copy(color = Palette.Accent),
-                capitalization = KeyboardCapitalization.Sentences,
-                onImeAction = ::pin,
-            )
-            Label("It stays pinned on your home screen all day.", style = Type.small)
-
             if (habits.isNotEmpty()) {
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(32.dp))
                 Label("Habits", style = Type.label)
                 habits.forEach { (habit, done) ->
                     TextAction(

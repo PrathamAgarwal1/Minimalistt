@@ -138,12 +138,6 @@ class NotificationsRepository(
 
     // Urgent messages
 
-    /** How many urgent messages are left in this mode session (or today, outside modes). */
-    suspend fun urgentLeft(): Int {
-        val since = modes.currentModeStartedAt() ?: startOfToday()
-        return (modes.state.value.urgentPerSession - dao.urgentSince(since)).coerceAtLeast(0)
-    }
-
     suspend fun logUrgent(vip: Vip, mode: String?) {
         dao.logUrgent(UrgentLogEntity(vipName = vip.name, sentAt = TrustedClock.nowMillis(), mode = mode))
     }

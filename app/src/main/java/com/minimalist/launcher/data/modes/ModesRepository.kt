@@ -66,7 +66,6 @@ data class ModesState(
     /** Minutes of the day when batched notifications arrive. */
     val batchTimes: List<Int> = listOf(13 * 60, 20 * 60),
     val lastBatchAt: Long? = null,
-    val urgentPerSession: Int = 3,
     val allowedBrowser: String? = null,
 )
 
@@ -106,7 +105,6 @@ class ModesRepository(
         val batchingEnabled = booleanPreferencesKey("batching_enabled")
         val batchTimes = stringPreferencesKey("batch_times")
         val lastBatchAt = longPreferencesKey("last_batch_at")
-        val urgentPerSession = intPreferencesKey("urgent_per_session")
         val allowedBrowser = stringPreferencesKey("allowed_browser")
     }
 
@@ -144,7 +142,6 @@ class ModesRepository(
             batchingEnabled = prefs[Keys.batchingEnabled] ?: defaults.batchingEnabled,
             batchTimes = prefs[Keys.batchTimes]?.split(',')?.mapNotNull { it.toIntOrNull() }?.sorted() ?: defaults.batchTimes,
             lastBatchAt = prefs[Keys.lastBatchAt],
-            urgentPerSession = prefs[Keys.urgentPerSession] ?: defaults.urgentPerSession,
             allowedBrowser = prefs[Keys.allowedBrowser],
         )
     }.stateIn(scope, SharingStarted.Eagerly, ModesState())
@@ -233,7 +230,6 @@ class ModesRepository(
         it[Keys.batchTimes] = times.sorted().joinToString(",")
     }
 
-    suspend fun setUrgentPerSession(count: Int) = edit { it[Keys.urgentPerSession] = count }
 
     suspend fun setAllowedBrowser(packageName: String?) = edit { prefs ->
         if (packageName == null) {
@@ -262,8 +258,6 @@ class ModesRepository(
         return open?.kind
     }
 
-    suspend fun currentModeStartedAt(): Long? = dao.openMode()?.startedAt
-
     suspend fun lastNightStartedAt(): Long? = dao.lastMode(com.minimalist.launcher.domain.modes.LockKind.Night.name)?.startedAt
 
     suspend fun recordFirstOpen(day: Long, atMillis: Long, early: Boolean) = dao.recordFirstOpen(day, atMillis, early)
@@ -282,12 +276,9 @@ class ModesRepository(
 
     fun reflection(day: Long): Flow<ReflectionEntity?> = dao.observeReflection(day)
 
-    suspend fun saveReflection(day: Long, wentWell: String?, firstTask: String?) {
-        dao.upsertReflection(ReflectionEntity(day, wentWell?.trim()?.ifEmpty { null }, firstTask?.trim()?.ifEmpty { null }))
+    suspend fun saveReflection(day: Long, wentWell: String?) {
+        dao.upsertReflection(ReflectionEntity(day, wentWell?.trim()?.ifEmpty { null }, firstTask = null))
     }
-
-    /** Last night's "tomorrow's first task", offered as this morning's intention. */
-    suspend fun yesterdaysFirstTask(): String? = dao.reflection(TrustedClock.today().minusDays(1).toEpochDay())?.firstTask
 
     fun habitsToday(): Flow<List<Pair<HabitEntity, Boolean>>> {
         val day = TrustedClock.today().toEpochDay()

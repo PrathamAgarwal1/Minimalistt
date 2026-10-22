@@ -161,15 +161,6 @@ fun NotificationsSettingsScreen(onBack: () -> Unit, onOpenHeld: () -> Unit) {
                     container.changes.submit(Change.AddVip(name, phone))
                 },
             )
-
-            SectionHeader("Urgent messages per session")
-            FlowRow {
-                listOf(1, 3, 5, 10).forEach { count ->
-                    Choice("$count", selected = state.urgentPerSession == count, onClick = {
-                        container.changes.submit(Change.SetUrgentPerSession(count))
-                    })
-                }
-            }
             Spacer(Modifier.height(24.dp))
         }
     }

@@ -95,7 +95,6 @@ object Protection {
     /** Choosing a browser strengthens; dropping or swapping it weakens. */
     fun browserWeakens(old: String?, new: String?): Boolean = old != null && new != old
 
-    fun urgentWeakens(old: Int, new: Int): Boolean = new > old
 
     fun testModeWeakens(new: Boolean): Boolean = new
 }

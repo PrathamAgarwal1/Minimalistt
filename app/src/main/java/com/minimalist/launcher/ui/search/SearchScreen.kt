@@ -45,6 +45,7 @@ private val SHORTCUTS = listOf(
     "Earned screen time" to Destination.Earn,
     "Emergency unlock and letters" to Destination.Protection,
     "Appearance" to Destination.Appearance,
+    "Home screen and favourites" to Destination.HomeApps,
     "Setup and status" to Destination.Setup,
 )
 

@@ -80,16 +80,17 @@ Minimalist, Lock) and make it the **default Home app** (Settings → Apps → De
 
 ## Using it
 
-- **Home:** time, date and a quiet line (screen time, next alarm, battery: your choice), today's
-  intention, up to 6 text-only favourites that change places every day, and Put away, Search and
+- **Home:** time, date and a quiet line (screen time, next alarm, battery: your choice), up to 6
+  text-only favourites that change places every day, and Put away, Search and
   Urgent message. There is no app drawer: swipe up or tap Search and type.
 - **Long-press** an app in search to add it to favourites, hide it, or open app info. Long-press
   the clock for a quick menu: block an app, Put away, Stats, Settings, Setup and status.
 - **Search** finds Minimalist's own pages too (in the accent colour): type "block", "stats",
   "weekly", "night", "emergency" and so on.
-- **Settings** is grouped: Focus (blocking, websites, earned time), Modes (Put away, night,
-  notifications), You (stats, weekly review, emergency and letters) and Phone (setup, appearance,
-  Home app, favourites, hidden apps).
+- **Settings** is grouped into Focus (blocking, websites, earned time), Modes (Put away, night,
+  notifications), You (stats, weekly review, emergency and letters) and Phone (Home screen,
+  appearance, setup). Each row says in one line how things stand. Home app, favourites and hidden
+  apps live under Home screen.
 - **Blocking** (Settings → Blocking): block an app for hours to months, schedules (e.g.
   22:00–08:00, or class hours on weekdays), daily limits on time or opens, and friction for apps
   that are allowed but slowed down. Phone, emergency calls, SMS, the clock, the keyboard, this
@@ -107,12 +108,11 @@ Minimalist, Lock) and make it the **default Home app** (Settings → Apps → De
 - **Night** (Settings → Put away and night): from bedtime until the phone opens, with separate
   weekend times. The wind-down before it turns on grayscale and a red tint and doubles friction
   countdowns. Only essentials, the clock, and one audio and one notes app work.
-- **Morning screen:** once when the phone opens, today's one thing, your habits and what came in
-  overnight.
+- **Morning screen:** once when the phone opens, your habits and what came in overnight.
 - **Notifications** (Settings → Notifications and VIPs): blocked apps' notifications are saved,
   others wait during modes or until batch times; calls, SMS and VIPs always come through.
   Urgent message: pick a VIP, type, WhatsApp opens on their chat for a minute past any block;
-  quick replies go through WhatsApp's own notification.
+  quick replies go through WhatsApp's own notification. There's no limit on how many you send.
 - **Earned screen time** (Settings → Earned screen time): chosen apps open only on time earned
   by steps and focus sessions, with rules you set.
 - **Stats** (Settings → Stats and export): today and the last 7 days, and an export of everything

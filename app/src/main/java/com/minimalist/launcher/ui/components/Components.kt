@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -169,6 +170,26 @@ fun TwoLineRow(
             TextAction(text = action, onClick = onAction, style = Type.small, modifier = Modifier.padding(start = 16.dp))
         }
     }
+}
+
+/** A row that opens a page: its name, a quiet line saying how things stand, and a chevron. */
+@Composable
+fun NavRow(title: String, summary: String? = null, onClick: () -> Unit, summaryColor: Color = Palette.Dim) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .combinedClickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Label(title, style = Type.body)
+            if (summary != null) Label(summary, style = Type.small.copy(color = summaryColor))
+        }
+        Label("›", style = Type.item.copy(color = Palette.Faint), modifier = Modifier.padding(start = 16.dp))
+    }
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Palette.Line))
 }
 
 /** One option in a set; the chosen one takes the accent. */

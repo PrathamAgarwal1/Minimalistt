@@ -24,11 +24,7 @@ data class Appearance(
     val centred: Boolean = true,
     /** Shown under the date: "screen", "alarm", "battery". */
     val glance: Set<String> = setOf("screen", "alarm"),
-    val showIntention: Boolean = true,
 )
-
-/** Today's intention, valid only on the day it was written. */
-data class Intention(val text: String, val epochDay: Long)
 
 /** The favourites order shown on [epochDay]. */
 data class StoredFavouriteOrder(val keys: List<String>, val epochDay: Long)
@@ -36,8 +32,6 @@ data class StoredFavouriteOrder(val keys: List<String>, val epochDay: Long)
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     private object Keys {
-        val intentionText = stringPreferencesKey("intention_text")
-        val intentionDay = longPreferencesKey("intention_day")
         val favouriteOrder = stringPreferencesKey("favourite_order")
         val favouriteOrderDay = longPreferencesKey("favourite_order_day")
         val testMode = booleanPreferencesKey("test_mode")
@@ -46,7 +40,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val clockWeight = stringPreferencesKey("clock_weight")
         val centred = booleanPreferencesKey("centred")
         val glance = stringSetPreferencesKey("glance")
-        val showIntention = booleanPreferencesKey("show_intention")
         val setupDone = booleanPreferencesKey("setup_done")
     }
 
@@ -65,7 +58,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             clockWeight = prefs[Keys.clockWeight] ?: defaults.clockWeight,
             centred = prefs[Keys.centred] ?: defaults.centred,
             glance = prefs[Keys.glance] ?: defaults.glance,
-            showIntention = prefs[Keys.showIntention] ?: defaults.showIntention,
         )
     }.distinctUntilChanged()
 
@@ -76,17 +68,11 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             it[Keys.clockWeight] = appearance.clockWeight
             it[Keys.centred] = appearance.centred
             it[Keys.glance] = appearance.glance
-            it[Keys.showIntention] = appearance.showIntention
         }
     }
 
     /** Debug builds only; see TimeScale. */
     val testMode: Flow<Boolean> = dataStore.data.map { it[Keys.testMode] ?: false }.distinctUntilChanged()
-
-    val intention: Flow<Intention?> = dataStore.data.map { prefs ->
-        val text = prefs[Keys.intentionText]?.takeIf { it.isNotBlank() } ?: return@map null
-        Intention(text, prefs[Keys.intentionDay] ?: Long.MIN_VALUE)
-    }.distinctUntilChanged()
 
     val favouriteOrder: Flow<StoredFavouriteOrder> = dataStore.data.map { prefs ->
         StoredFavouriteOrder(
@@ -94,13 +80,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             epochDay = prefs[Keys.favouriteOrderDay] ?: Long.MIN_VALUE,
         )
     }.distinctUntilChanged()
-
-    suspend fun setIntention(text: String, epochDay: Long) {
-        dataStore.edit {
-            it[Keys.intentionText] = text.trim()
-            it[Keys.intentionDay] = epochDay
-        }
-    }
 
     suspend fun setFavouriteOrder(order: StoredFavouriteOrder) {
         dataStore.edit {

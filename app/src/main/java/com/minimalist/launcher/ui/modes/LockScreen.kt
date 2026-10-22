@@ -112,10 +112,8 @@ private fun NightLock(left: String, opensAtMillis: Long, onUrgent: () -> Unit) {
     val reflection by remember { container.modes.reflection(day) }.collectAsStateWithLifecycle(null)
     val firstOpen by remember { container.modes.firstOpen(day) }.collectAsStateWithLifecycle(null)
     var wentWell by remember { mutableStateOf<String?>(null) }
-    var firstTask by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(reflection) {
         if (wentWell == null) wentWell = reflection?.wentWell.orEmpty()
-        if (firstTask == null) firstTask = reflection?.firstTask.orEmpty()
     }
     val text = Type.body.copy(color = NightPalette.Text)
     val dim = Type.small.copy(color = NightPalette.Dim)
@@ -145,20 +143,10 @@ private fun NightLock(left: String, opensAtMillis: Long, onUrgent: () -> Unit) {
                 style = dim,
                 capitalization = KeyboardCapitalization.Sentences,
             )
-            Spacer(Modifier.height(12.dp))
-            Label("What's tomorrow's first task?", style = text)
-            InputField(
-                value = firstTask.orEmpty(),
-                onValueChange = { firstTask = it.take(120) },
-                placeholder = "It becomes tomorrow morning's prompt",
-                style = dim,
-                capitalization = KeyboardCapitalization.Sentences,
-            )
-            val saved = reflection != null && reflection?.wentWell.orEmpty() == wentWell.orEmpty().trim() &&
-                reflection?.firstTask.orEmpty() == firstTask.orEmpty().trim()
+            val saved = reflection != null && reflection?.wentWell.orEmpty() == wentWell.orEmpty().trim()
             TextAction(
                 text = if (saved) "Saved. Sleep well." else "Save",
-                onClick = { scope.launch { container.modes.saveReflection(day, wentWell, firstTask) } },
+                onClick = { scope.launch { container.modes.saveReflection(day, wentWell) } },
                 style = text,
             )
         }

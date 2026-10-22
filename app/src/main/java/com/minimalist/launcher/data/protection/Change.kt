@@ -27,7 +27,6 @@ sealed interface Change {
     data class SetNotesApp(val packageName: String?) : Change
     data class AddVip(val name: String, val phone: String) : Change
     data class SetBatching(val enabled: Boolean, val times: List<Int>) : Change
-    data class SetUrgentPerSession(val count: Int) : Change
     data class SetAllowedBrowser(val packageName: String?) : Change
     data class RemoveDomain(val domain: String) : Change
     data class SetTestMode(val enabled: Boolean) : Change
@@ -75,7 +74,6 @@ object ChangeCodec {
                 put("enabled", change.enabled)
                 put("times", JSONArray(change.times))
             }
-            is Change.SetUrgentPerSession -> put("count", change.count)
             is Change.SetAllowedBrowser -> change.packageName?.let { put("package", it) }
             is Change.RemoveDomain -> put("domain", change.domain)
             is Change.SetTestMode -> put("enabled", change.enabled)
@@ -113,7 +111,6 @@ object ChangeCodec {
             "SetNotesApp" -> Change.SetNotesApp(pkg)
             "AddVip" -> Change.AddVip(json.getString("name"), json.getString("phone"))
             "SetBatching" -> Change.SetBatching(json.getBoolean("enabled"), json.getJSONArray("times").ints())
-            "SetUrgentPerSession" -> Change.SetUrgentPerSession(json.getInt("count"))
             "SetAllowedBrowser" -> Change.SetAllowedBrowser(pkg)
             "RemoveDomain" -> Change.RemoveDomain(json.getString("domain"))
             "SetTestMode" -> Change.SetTestMode(json.getBoolean("enabled"))

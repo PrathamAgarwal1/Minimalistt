@@ -61,7 +61,7 @@ fun FrictionScreen(notice: Notice.Friction) {
             opensToday = opens,
             scale = container.timeScale.value,
             baseSeconds = modes.frictionBaseSeconds,
-            windDown = DayModes.windDownUntil(modes.dayModes, java.time.TrustedClock.zonedNow()) != null,
+            windDown = DayModes.windDownUntil(modes.dayModes, TrustedClock.zonedNow()) != null,
         )
     }
     BackHandler(onBack = ::notNow)
