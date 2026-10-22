@@ -1,0 +1,60 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "87c70db3e221181ddb8af384387528ee",
+    "entities": [
+      {
+        "tableName": "app_prefs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`app_key` TEXT NOT NULL, `package_name` TEXT NOT NULL, `hidden` INTEGER NOT NULL, `favourite` INTEGER NOT NULL, PRIMARY KEY(`app_key`))",
+        "fields": [
+          {
+            "fieldPath": "appKey",
+            "columnName": "app_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hidden",
+            "columnName": "hidden",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "favourite",
+            "columnName": "favourite",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "app_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_app_prefs_package_name",
+            "unique": false,
+            "columnNames": [
+              "package_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_prefs_package_name` ON `${TABLE_NAME}` (`package_name`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '87c70db3e221181ddb8af384387528ee')"
+    ]
+  }
+}
