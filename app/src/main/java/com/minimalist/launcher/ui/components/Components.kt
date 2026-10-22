@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -77,12 +78,13 @@ fun TextAction(
     style: TextStyle = Type.body,
     enabled: Boolean = true,
     onLongClick: (() -> Unit)? = null,
+    alignment: Alignment = Alignment.CenterStart,
 ) {
     Box(
         modifier = modifier
             .heightIn(min = Spacing.minTap)
             .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongClick),
-        contentAlignment = Alignment.CenterStart,
+        contentAlignment = alignment,
     ) {
         BasicText(text = text, style = if (enabled) style else style.copy(color = Palette.Faint))
     }
@@ -112,6 +114,7 @@ fun InputField(
     onImeAction: () -> Unit = {},
     capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
     singleLine: Boolean = true,
+    keyboardType: KeyboardType = KeyboardType.Text,
 ) {
     BasicTextField(
         value = value,
@@ -120,7 +123,7 @@ fun InputField(
         textStyle = style,
         singleLine = singleLine,
         cursorBrush = SolidColor(Palette.Accent),
-        keyboardOptions = KeyboardOptions(imeAction = imeAction, capitalization = capitalization, autoCorrectEnabled = false),
+        keyboardOptions = KeyboardOptions(imeAction = imeAction, capitalization = capitalization, autoCorrectEnabled = false, keyboardType = keyboardType),
         keyboardActions = KeyboardActions(onAny = { onImeAction() }),
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.CenterStart) {
@@ -138,6 +141,45 @@ fun LabelledAction(label: String, action: String, onAction: () -> Unit) {
         Label(label, modifier = Modifier.weight(1f), style = Type.body)
         TextAction(text = action, onClick = onAction, style = Type.small, modifier = Modifier.padding(start = 16.dp))
     }
+}
+
+/** A title with a quieter second line, an optional action on the right, and an optional tap. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TwoLineRow(
+    title: String,
+    subtitle: String,
+    action: String? = null,
+    onAction: () -> Unit = {},
+    onClick: (() -> Unit)? = null,
+) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = Spacing.minTap)
+                .then(if (onClick != null) Modifier.combinedClickable(onClick = onClick) else Modifier)
+                .padding(vertical = 6.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Label(title, style = Type.body)
+            Label(subtitle, style = Type.small)
+        }
+        if (action != null) {
+            TextAction(text = action, onClick = onAction, style = Type.small, modifier = Modifier.padding(start = 16.dp))
+        }
+    }
+}
+
+/** One option in a set; the chosen one takes the accent. */
+@Composable
+fun Choice(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextAction(
+        text = text,
+        onClick = onClick,
+        style = Type.body.copy(color = if (selected) Palette.Accent else Palette.Dim),
+        modifier = modifier.padding(end = 20.dp),
+    )
 }
 
 /** Asks for a line of text. */

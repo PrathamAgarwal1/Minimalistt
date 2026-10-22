@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 
 class SearchViewModel(container: AppContainer) : ViewModel() {
 
+    private val container = container
     private val apps = container.apps
 
     private val _query = MutableStateFlow("")
@@ -47,7 +48,7 @@ class SearchViewModel(container: AppContainer) : ViewModel() {
 
     fun reset() = setQuery("")
 
-    fun launch(app: LaunchableApp) = apps.launch(app)
+    fun launch(app: LaunchableApp) = container.open(app)
 
     fun openAppInfo(app: LaunchableApp) = apps.openAppInfo(app)
 

@@ -1,24 +1,28 @@
 package com.minimalist.launcher.ui.home
 
+import android.app.AlarmManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minimalist.launcher.AppContainer
+import com.minimalist.launcher.blocking.BlockerService
 import com.minimalist.launcher.data.settings.StoredFavouriteOrder
 import com.minimalist.launcher.domain.FavouriteOrder
 import com.minimalist.launcher.domain.LaunchableApp
-import com.minimalist.launcher.system.BatteryState
-import com.minimalist.launcher.system.batteryState
 import com.minimalist.launcher.system.minuteTicker
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 data class HomeState(
     val loaded: Boolean = false,
@@ -26,18 +30,35 @@ data class HomeState(
     val intention: String? = null,
 )
 
-class HomeViewModel(container: AppContainer) : ViewModel() {
+/** The quiet line under the date: screen time so far and the next alarm. */
+data class Glance(
+    val screenTimeMillis: Long? = null,
+    val nextAlarm: LocalDateTime? = null,
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     private val apps = container.apps
     private val settings = container.settings
+    private val alarmManager = container.appContext.getSystemService(AlarmManager::class.java)
 
     val now: StateFlow<LocalDateTime> = minuteTicker()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDateTime.now())
 
-    val battery: StateFlow<BatteryState?> = batteryState(container.appContext)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
     private val today = now.map { it.toLocalDate().toEpochDay() }.distinctUntilChanged()
+
+    val glance: StateFlow<Glance> = today
+        .flatMapLatest { day -> container.usage.totalForegroundToday(container.appContext.packageName, day) }
+        .combine(now) { screenTime, _ ->
+            Glance(
+                screenTimeMillis = screenTime.takeIf { BlockerService.isEnabled(container.appContext) },
+                nextAlarm = alarmManager.nextAlarmClock?.triggerTime?.let {
+                    LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault())
+                },
+            )
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Glance())
 
     val state: StateFlow<HomeState> = combine(
         apps.installedApps.filterNotNull(),
@@ -61,7 +82,7 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 
-    fun launch(app: LaunchableApp) = apps.launch(app)
+    fun launch(app: LaunchableApp) = container.open(app)
 
     fun openAppInfo(app: LaunchableApp) = apps.openAppInfo(app)
 

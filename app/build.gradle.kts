@@ -58,6 +58,11 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    lint {
+        // Release APKs are only built in CI to prove debug tools stay out of them.
+        checkReleaseBuilds = false
+    }
 }
 
 kotlin {

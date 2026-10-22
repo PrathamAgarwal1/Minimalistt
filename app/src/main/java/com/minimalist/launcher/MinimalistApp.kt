@@ -1,6 +1,7 @@
 package com.minimalist.launcher
 
 import android.app.Application
+import com.minimalist.launcher.debug.DebugTools
 
 class MinimalistApp : Application() {
 
@@ -10,5 +11,6 @@ class MinimalistApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        DebugTools.install(this)
     }
 }

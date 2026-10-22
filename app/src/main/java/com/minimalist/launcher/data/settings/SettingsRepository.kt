@@ -3,6 +3,7 @@ package com.minimalist.launcher.data.settings
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -26,7 +27,11 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val intentionDay = longPreferencesKey("intention_day")
         val favouriteOrder = stringPreferencesKey("favourite_order")
         val favouriteOrderDay = longPreferencesKey("favourite_order_day")
+        val testMode = booleanPreferencesKey("test_mode")
     }
+
+    /** Debug builds only; see TimeScale. */
+    val testMode: Flow<Boolean> = dataStore.data.map { it[Keys.testMode] ?: false }.distinctUntilChanged()
 
     val intention: Flow<Intention?> = dataStore.data.map { prefs ->
         val text = prefs[Keys.intentionText]?.takeIf { it.isNotBlank() } ?: return@map null
@@ -52,6 +57,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             it[Keys.favouriteOrder] = order.keys.joinToString(SEPARATOR)
             it[Keys.favouriteOrderDay] = order.epochDay
         }
+    }
+
+    suspend fun setTestMode(enabled: Boolean) {
+        dataStore.edit { it[Keys.testMode] = enabled }
     }
 
     private companion object {

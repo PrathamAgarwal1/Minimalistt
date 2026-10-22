@@ -3,12 +3,9 @@ package com.minimalist.launcher.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minimalist.launcher.AppContainer
-import com.minimalist.launcher.domain.AppSearch
 import com.minimalist.launcher.domain.LaunchableApp
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
@@ -31,18 +28,6 @@ class SettingsViewModel(container: AppContainer) : ViewModel() {
             hidden = installed.filter { it.key in hidden },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
-
-    private val _pickerQuery = MutableStateFlow("")
-    val pickerQuery: StateFlow<String> = _pickerQuery.asStateFlow()
-
-    val pickerResults: StateFlow<List<LaunchableApp>> = combine(_pickerQuery, apps.installedApps.filterNotNull(), apps.prefs) { query, installed, prefs ->
-        val excluded = prefs.filter { it.hidden || it.favourite }.map { it.appKey }.toSet()
-        AppSearch.search(query, installed, excluded)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    fun setPickerQuery(value: String) {
-        _pickerQuery.value = value
-    }
 
     fun addFavourite(app: LaunchableApp) {
         viewModelScope.launch { apps.setFavourite(app, true) }

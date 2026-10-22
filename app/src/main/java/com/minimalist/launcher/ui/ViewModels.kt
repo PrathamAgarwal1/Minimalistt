@@ -9,6 +9,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.minimalist.launcher.AppContainer
 import com.minimalist.launcher.MinimalistApp
 
+@Composable
+fun appContainer(): AppContainer = (LocalContext.current.applicationContext as MinimalistApp).container
+
 /** Activity-scoped ViewModel built from the app's [AppContainer]. */
 @Composable
 inline fun <reified VM : ViewModel> appViewModel(crossinline create: (AppContainer) -> VM): VM {

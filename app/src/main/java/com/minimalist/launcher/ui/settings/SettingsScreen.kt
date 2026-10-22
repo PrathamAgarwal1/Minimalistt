@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.BuildConfig
+import com.minimalist.launcher.blocking.BlockerService
 import com.minimalist.launcher.domain.FavouriteOrder
 import com.minimalist.launcher.system.HomeRole
 import com.minimalist.launcher.ui.appViewModel
@@ -35,6 +36,7 @@ import com.minimalist.launcher.ui.theme.Type
 fun SettingsScreen(
     onBack: () -> Unit,
     onAddFavourite: () -> Unit,
+    onOpenBlocking: () -> Unit,
     viewModel: SettingsViewModel = appViewModel { SettingsViewModel(it) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -55,6 +57,13 @@ fun SettingsScreen(
         Spacer(Modifier.height(40.dp))
         ScreenTitle("Settings", onBack)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            SectionHeader("Blocking")
+            TextAction(
+                text = if (BlockerService.isEnabled(context)) "Blocks, schedules and limits" else "Blocks, schedules and limits (service off)",
+                onClick = onOpenBlocking,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
             SectionHeader("Home app")
             if (isHome) {
                 Label("This is your Home app.", style = Type.body.copy(color = Palette.Accent))
