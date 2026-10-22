@@ -1,0 +1,221 @@
+package com.minimalist.launcher.ui.components
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import com.minimalist.launcher.ui.theme.Palette
+import com.minimalist.launcher.ui.theme.Spacing
+import com.minimalist.launcher.ui.theme.Type
+
+/** Full-screen black surface that keeps content clear of bars, cutouts and the keyboard. */
+@Composable
+fun Screen(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Palette.Background)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(horizontal = Spacing.gutter),
+        content = content,
+    )
+}
+
+@Composable
+fun Label(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = Type.body,
+    textAlign: TextAlign? = null,
+) {
+    BasicText(text = text, modifier = modifier, style = if (textAlign != null) style.copy(textAlign = textAlign) else style)
+}
+
+/** A row of text with a large tap target. No icons, no ripple flourish. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TextAction(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: TextStyle = Type.body,
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+) {
+    Box(
+        modifier = modifier
+            .heightIn(min = Spacing.minTap)
+            .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongClick),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        BasicText(text = text, style = if (enabled) style else style.copy(color = Palette.Faint))
+    }
+}
+
+@Composable
+fun ScreenTitle(text: String, onBack: () -> Unit) {
+    TextAction(text = text, onClick = onBack, style = Type.title, modifier = Modifier.fillMaxWidth())
+    Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+fun SectionHeader(text: String) {
+    Spacer(Modifier.height(24.dp))
+    Label(text = text.uppercase(), style = Type.small)
+    Spacer(Modifier.height(4.dp))
+}
+
+@Composable
+fun InputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = Type.title,
+    imeAction: ImeAction = ImeAction.Done,
+    onImeAction: () -> Unit = {},
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
+    singleLine: Boolean = true,
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.fillMaxWidth().heightIn(min = Spacing.minTap),
+        textStyle = style,
+        singleLine = singleLine,
+        cursorBrush = SolidColor(Palette.Accent),
+        keyboardOptions = KeyboardOptions(imeAction = imeAction, capitalization = capitalization, autoCorrectEnabled = false),
+        keyboardActions = KeyboardActions(onAny = { onImeAction() }),
+        decorationBox = { inner ->
+            Box(contentAlignment = Alignment.CenterStart) {
+                if (value.isEmpty()) BasicText(placeholder, style = style.copy(color = Palette.Faint))
+                inner()
+            }
+        },
+    )
+}
+
+/** One line with a label on the left and a quiet action on the right. */
+@Composable
+fun LabelledAction(label: String, action: String, onAction: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Label(label, modifier = Modifier.weight(1f), style = Type.body)
+        TextAction(text = action, onClick = onAction, style = Type.body.copy(color = Palette.Dim), modifier = Modifier.padding(start = 16.dp))
+    }
+}
+
+/** Asks for a line of text. */
+@Composable
+fun TextInputDialog(
+    title: String,
+    initial: String,
+    placeholder: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var value by remember { mutableStateOf(initial) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Palette.Background)
+                .border(1.dp, Palette.Faint)
+                .padding(horizontal = Spacing.gutter, vertical = 16.dp),
+        ) {
+            Label(title, style = Type.small)
+            InputField(
+                value = value,
+                onValueChange = { value = it },
+                placeholder = placeholder,
+                modifier = Modifier.focusRequester(focus),
+                style = Type.body,
+                capitalization = KeyboardCapitalization.Sentences,
+                onImeAction = {
+                    onSave(value)
+                    onDismiss()
+                },
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextAction("Cancel", onClick = onDismiss, style = Type.body.copy(color = Palette.Dim))
+                Spacer(Modifier.width(24.dp))
+                TextAction(
+                    "Save",
+                    onClick = {
+                        onSave(value)
+                        onDismiss()
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** A quiet list of choices over the current screen. */
+@Composable
+fun OptionsDialog(
+    title: String,
+    options: List<Pair<String, () -> Unit>>,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Palette.Background)
+                .border(1.dp, Palette.Faint)
+                .padding(horizontal = Spacing.gutter, vertical = 16.dp),
+        ) {
+            Label(title, style = Type.small)
+            Spacer(Modifier.height(8.dp))
+            options.forEach { (label, action) ->
+                TextAction(
+                    text = label,
+                    onClick = {
+                        onDismiss()
+                        action()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            TextAction(text = "Cancel", onClick = onDismiss, style = Type.body.copy(color = Palette.Dim), modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
