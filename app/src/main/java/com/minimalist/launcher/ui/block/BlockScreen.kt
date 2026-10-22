@@ -69,7 +69,9 @@ fun BlockScreen(notice: Notice.Blocked, onClose: () -> Unit, onUrgeRidden: () ->
                 Label(reasonText(notice.decision.primary), style = centered)
                 Spacer(Modifier.height(4.dp))
                 val left = notice.decision.untilMillis - now
-                if (left > 0) {
+                if (notice.decision.untilMillis == Long.MAX_VALUE) {
+                    Unit
+                } else if (left > 0) {
                     Label("${DurationFormat.remaining(left)} to go", style = Type.body.copy(color = Palette.Accent))
                 } else {
                     Label("It's open again now.", style = Type.body.copy(color = Palette.Accent))
@@ -123,4 +125,12 @@ private fun reasonText(reason: BlockReason): String = when (reason) {
     }
     is BlockReason.TimeLimit -> "Today's ${BlockingText.minutes(reason.limitMinutes)} are used up. It opens again at midnight."
     is BlockReason.OpenLimit -> "You've opened it ${reason.maxOpens} ${if (reason.maxOpens == 1) "time" else "times"} today, your limit. It opens again at midnight."
+    is BlockReason.Locked -> "${reason.kind.label} is on. Only calls, messages and your essentials work ${BlockingText.until(reason.untilMillis)}."
+    is BlockReason.OtherBrowser -> "Only ${reason.allowedLabel} is allowed for browsing."
+    is BlockReason.Website ->
+        if (reason.untilMillis == Long.MAX_VALUE) {
+            "You blocked this website."
+        } else {
+            "Blocked along with its app, ${BlockingText.until(reason.untilMillis)}."
+        }
 }

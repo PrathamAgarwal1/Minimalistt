@@ -1,7 +1,5 @@
 package com.minimalist.launcher.ui.blocking
 
-import android.app.TimePickerDialog
-import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -35,6 +33,7 @@ import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.ScreenTitle
 import com.minimalist.launcher.ui.components.SectionHeader
 import com.minimalist.launcher.ui.components.TextAction
+import com.minimalist.launcher.ui.components.pickTime
 import com.minimalist.launcher.ui.theme.Type
 import java.time.DayOfWeek
 
@@ -70,16 +69,7 @@ fun ScheduleEditScreen(
         loaded = true
     }
 
-    fun pickTime(initial: Int, onPicked: (Int) -> Unit) {
-        TimePickerDialog(
-            context,
-            android.R.style.Theme_DeviceDefault_Dialog_Alert,
-            { _, hour, minute -> onPicked(hour * 60 + minute) },
-            initial / 60,
-            initial % 60,
-            DateFormat.is24HourFormat(context),
-        ).show()
-    }
+    fun pickTime(initial: Int, onPicked: (Int) -> Unit) = pickTime(context, initial, onPicked)
 
     val suggestions = rememberAppResults(query, PickerMode.Blockable, exclude = packages).take(MAX_SUGGESTIONS)
 

@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minimalist.launcher.data.blocking.Notice
@@ -24,12 +25,24 @@ import com.minimalist.launcher.ui.blocking.WantingLikingScreen
 import com.minimalist.launcher.ui.friction.FrictionScreen
 import com.minimalist.launcher.ui.friction.WorthScreen
 import com.minimalist.launcher.ui.home.HomeScreen
-import com.minimalist.launcher.ui.placeholder.ComingLaterScreen
+import com.minimalist.launcher.MainActivity
+import com.minimalist.launcher.ui.modes.LockScreen
+import com.minimalist.launcher.ui.modes.ModeAppRole
+import com.minimalist.launcher.ui.modes.ModesSettingsScreen
+import com.minimalist.launcher.ui.modes.PutAwayStartScreen
+import com.minimalist.launcher.ui.modes.StudyWindowEditScreen
+import com.minimalist.launcher.ui.notifications.HeldNotificationsScreen
+import com.minimalist.launcher.ui.notifications.NotificationsSettingsScreen
+import com.minimalist.launcher.ui.notifications.UrgentScreen
+import com.minimalist.launcher.ui.websites.WebsitesScreen
 import com.minimalist.launcher.ui.search.SearchScreen
 import com.minimalist.launcher.ui.settings.SettingsScreen
 import com.minimalist.launcher.ui.settings.SettingsViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+
+/** Stands in for the home screen while a mode runs. */
+private data object LockedHome : Destination { override val parent = null }
 
 sealed interface Destination {
     val parent: Destination?
@@ -46,6 +59,12 @@ sealed interface Destination {
     data class ScheduleEdit(val scheduleId: Long?) : Destination { override val parent = Blocking }
     data object FrictionPicker : Destination { override val parent = Blocking }
     data object WantingLiking : Destination { override val parent = Blocking }
+    data object Modes : Destination { override val parent = Settings }
+    data object StudyHours : Destination { override val parent = Modes }
+    data class ModeAppPicker(val role: ModeAppRole) : Destination { override val parent = Modes }
+    data object Notifications : Destination { override val parent = Settings }
+    data object HeldNotifications : Destination { override val parent = Notifications }
+    data object Websites : Destination { override val parent = Settings }
     data object PutAway : Destination { override val parent = Home }
     data object UrgentMessage : Destination { override val parent = Home }
 }
@@ -55,18 +74,29 @@ sealed interface Destination {
  * the home screen does nothing, and the block screen covers everything while it is up.
  */
 @Composable
-fun LauncherRoot(homePresses: Flow<Unit>) {
+fun LauncherRoot(homePresses: Flow<Unit>, openRequests: Flow<String>) {
     val container = appContainer()
     var destination by remember { mutableStateOf<Destination>(Destination.Home) }
     val notice by container.notice.collectAsStateWithLifecycle()
+    val lock by container.lock.collectAsStateWithLifecycle()
 
     LaunchedEffect(homePresses) { homePresses.collect { destination = Destination.Home } }
+    LaunchedEffect(openRequests) {
+        openRequests.collect { if (it == MainActivity.OPEN_HELD) destination = Destination.HeldNotifications }
+    }
     LaunchedEffect(notice) { if (notice != null) destination = Destination.Home }
     BackHandler { destination.parent?.let { destination = it } }
 
     Box {
-        Crossfade(targetState = destination, animationSpec = tween(150), label = "screen") { screen ->
-            DestinationContent(screen, navigate = { destination = it })
+        // During a mode the home screen is the lock screen; only urgent messages lead anywhere.
+        val current = lock
+        val shown = if (current != null && destination != Destination.UrgentMessage) LockedHome else destination
+        Crossfade(targetState = shown, animationSpec = tween(150), label = "screen") { screen ->
+            if (screen == LockedHome && current != null) {
+                LockScreen(current, onUrgent = { destination = Destination.UrgentMessage })
+            } else {
+                DestinationContent(screen, navigate = { destination = it })
+            }
         }
         when (val current = notice) {
             is Notice.Blocked -> BlockScreen(
@@ -85,6 +115,7 @@ fun LauncherRoot(homePresses: Flow<Unit>) {
 private fun DestinationContent(screen: Destination, navigate: (Destination) -> Unit) {
     val back = { screen.parent?.let(navigate) ?: Unit }
     when (screen) {
+        LockedHome -> Unit
         Destination.Home -> HomeScreen(
             onOpenSearch = { navigate(Destination.Search) },
             onOpenSettings = { navigate(Destination.Settings) },
@@ -99,7 +130,47 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
             onBack = back,
             onAddFavourite = { navigate(Destination.FavouritePicker) },
             onOpenBlocking = { navigate(Destination.Blocking) },
+            onOpenModes = { navigate(Destination.Modes) },
+            onOpenNotifications = { navigate(Destination.Notifications) },
+            onOpenWebsites = { navigate(Destination.Websites) },
         )
+        Destination.Modes -> ModesSettingsScreen(
+            onBack = back,
+            onAddStudyHours = { navigate(Destination.StudyHours) },
+            onPickApp = { navigate(Destination.ModeAppPicker(it)) },
+        )
+        Destination.StudyHours -> StudyWindowEditScreen(onBack = back)
+        is Destination.ModeAppPicker -> {
+            val container = appContainer()
+            val scope = rememberCoroutineScope()
+            AppPickerScreen(
+                title = when (screen.role) {
+                    ModeAppRole.Essential -> "Add an essential"
+                    ModeAppRole.Audio -> "Audio app"
+                    ModeAppRole.Notes -> "Notes app"
+                },
+                mode = PickerMode.Blockable,
+                note = when (screen.role) {
+                    ModeAppRole.Essential -> "Works in every mode, e.g. a UPI app."
+                    else -> "Works during morning and night modes."
+                },
+                onBack = back,
+                onPick = { app ->
+                    scope.launch {
+                        val modes = container.modes
+                        when (screen.role) {
+                            ModeAppRole.Essential -> modes.setEssentials(modes.state.value.essentials + app.packageName)
+                            ModeAppRole.Audio -> modes.setAudioApp(app.packageName)
+                            ModeAppRole.Notes -> modes.setNotesApp(app.packageName)
+                        }
+                        back()
+                    }
+                },
+            )
+        }
+        Destination.Notifications -> NotificationsSettingsScreen(onBack = back, onOpenHeld = { navigate(Destination.HeldNotifications) })
+        Destination.HeldNotifications -> HeldNotificationsScreen(onBack = back)
+        Destination.Websites -> WebsitesScreen(onBack = back)
         Destination.FavouritePicker -> {
             val settings = appViewModel { SettingsViewModel(it) }
             AppPickerScreen(
@@ -158,15 +229,7 @@ private fun DestinationContent(screen: Destination, navigate: (Destination) -> U
         )
         is Destination.LimitEdit -> LimitEditScreen(packageName = screen.packageName, onBack = { navigate(Destination.Blocking) })
         is Destination.ScheduleEdit -> ScheduleEditScreen(scheduleId = screen.scheduleId, onBack = back)
-        Destination.PutAway -> ComingLaterScreen(
-            title = "Put away",
-            body = "Put away mode arrives in a later update.",
-            onBack = back,
-        )
-        Destination.UrgentMessage -> ComingLaterScreen(
-            title = "Urgent message",
-            body = "Urgent WhatsApp messages arrive in a later update.",
-            onBack = back,
-        )
+        Destination.PutAway -> PutAwayStartScreen(onBack = back)
+        Destination.UrgentMessage -> UrgentScreen(onBack = back, onAddVips = { navigate(Destination.Notifications) })
     }
 }

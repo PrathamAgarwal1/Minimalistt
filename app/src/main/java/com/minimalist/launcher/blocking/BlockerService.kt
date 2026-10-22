@@ -13,8 +13,11 @@ import com.minimalist.launcher.MainActivity
 import com.minimalist.launcher.MinimalistApp
 import com.minimalist.launcher.data.blocking.Notice
 import com.minimalist.launcher.domain.blocking.BlockDecision
+import com.minimalist.launcher.domain.blocking.BlockReason
+import com.minimalist.launcher.domain.websites.BrowserBars
 import com.minimalist.launcher.system.HomeRole
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -33,11 +36,13 @@ class BlockerService : AccessibilityService() {
         data class Foreground(val packageName: String) : Event
         data object Tick : Event
         data object ScreenOff : Event
+        data class CheckAddress(val packageName: String) : Event
     }
 
     private lateinit var container: AppContainer
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val events = Channel<Event>(Channel.UNLIMITED)
+    private var addressCheck: Job? = null
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -71,9 +76,18 @@ class BlockerService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val packageName = event.packageName?.toString() ?: return
-        if (!::container.isInitialized || container.protectedApps.isOverlay(packageName)) return
+        if (!::container.isInitialized) return
+        // Browsers: read the address bar shortly after the page settles.
+        if (packageName in BrowserBars.VIEW_IDS) {
+            addressCheck?.cancel()
+            addressCheck = scope.launch {
+                delay(ADDRESS_SETTLE_MILLIS)
+                events.trySend(Event.CheckAddress(packageName))
+            }
+        }
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (container.protectedApps.isOverlay(packageName)) return
         events.trySend(Event.Foreground(packageName))
     }
 
@@ -132,6 +146,12 @@ class BlockerService : AccessibilityService() {
                 }
             }
             Event.ScreenOff -> usage.switchTo(null)
+            is Event.CheckAddress -> {
+                if (usage.currentPackage != event.packageName) return
+                val blocked = container.websites.check(addressBarText(event.packageName)) ?: return
+                val domain = (blocked.primary as? BlockReason.Website)?.domain ?: return
+                sendHome(Notice.Blocked(event.packageName, domain, blocked))
+            }
         }
     }
 
@@ -151,11 +171,24 @@ class BlockerService : AccessibilityService() {
         container.usage.switchTo(this.packageName)
     }
 
+    /** The address bar's text, unless someone is typing in it. */
+    private fun addressBarText(packageName: String): String? {
+        val root = rootInActiveWindow ?: return null
+        if (root.packageName?.toString() != packageName) return null
+        for (id in BrowserBars.VIEW_IDS[packageName].orEmpty()) {
+            val node = root.findAccessibilityNodeInfosByViewId(id).firstOrNull() ?: continue
+            if (node.isFocused) return null
+            return node.text?.toString()
+        }
+        return null
+    }
+
     private fun foregroundPackage(): String? =
         rootInActiveWindow?.packageName?.toString()?.takeUnless { container.protectedApps.isOverlay(it) }
 
     companion object {
         private const val TICK_MILLIS = 5_000L
+        private const val ADDRESS_SETTLE_MILLIS = 400L
 
         fun isEnabled(context: Context): Boolean =
             context.getSystemService(AccessibilityManager::class.java)

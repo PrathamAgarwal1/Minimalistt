@@ -39,6 +39,12 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun frictionDao(): FrictionDao
 
+    abstract fun modesDao(): ModesDao
+
+    abstract fun notificationsDao(): NotificationsDao
+
+    abstract fun domainsDao(): DomainsDao
+
     companion object {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "minimalist.db").build()

@@ -28,6 +28,10 @@ class ProtectedApps(private val context: Context) {
         packages = compute()
     }
 
+    fun defaultDialer(): String? = context.getSystemService(TelecomManager::class.java)?.defaultDialerPackage
+
+    fun defaultSms(): String? = runCatching { Telephony.Sms.getDefaultSmsPackage(context) }.getOrNull()
+
     /**
      * Windows that float over the real foreground app (notification shade, keyboard, system
      * dialogs). They neither end a session nor count as an open.

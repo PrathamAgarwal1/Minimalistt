@@ -1,5 +1,6 @@
 package com.minimalist.launcher.domain.blocking
 
+import com.minimalist.launcher.domain.modes.LockKind
 import java.time.DayOfWeek
 
 /** A recurring window, e.g. 22:00–08:00 every day, or class hours on weekdays. */
@@ -48,6 +49,17 @@ sealed interface BlockReason {
     data class TimeLimit(val limitMinutes: Int, override val untilMillis: Long) : BlockReason
 
     data class OpenLimit(val maxOpens: Int, override val untilMillis: Long) : BlockReason
+
+    /** Put away, morning or night: only essentials work. */
+    data class Locked(val kind: LockKind, override val untilMillis: Long) : BlockReason
+
+    /** Not the one browser allowed. Lasts until the setting changes. */
+    data class OtherBrowser(val allowedLabel: String) : BlockReason {
+        override val untilMillis: Long get() = Long.MAX_VALUE
+    }
+
+    /** A website that belongs to a blocked app, or one added by hand. */
+    data class Website(val domain: String, override val untilMillis: Long) : BlockReason
 }
 
 sealed interface BlockDecision {

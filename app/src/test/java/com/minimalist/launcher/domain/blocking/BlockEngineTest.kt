@@ -125,3 +125,32 @@ class BlockEngineTest {
         assertEquals(nowMs + 3 * hour + day.toMillis(), BlockEngine.extendedUntil(nowMs + 3 * hour, nowMs, day))
     }
 }
+
+class BlockEngineLockTest {
+
+    private val zone = ZoneId.of("Asia/Kolkata")
+    private val now = ZonedDateTime.of(2026, 10, 23, 15, 0, 0, 0, zone)
+    private val later = now.plusHours(1).toInstant().toEpochMilli()
+
+    private fun evaluate(packageName: String, lock: com.minimalist.launcher.domain.modes.ActiveLock?, allowed: Set<String> = emptySet(), browsers: Set<String> = emptySet()) =
+        BlockEngine.evaluate(
+            packageName, now, BlockRules.NONE, UsageToday.NONE, setOf("com.android.dialer"), TimeScale.REAL, true,
+            lock = lock, lockAllowedPackages = allowed, otherBrowsers = browsers, allowedBrowserLabel = "Chrome",
+        )
+
+    @Test
+    fun lockBlocksEverythingButEssentials() {
+        val lock = com.minimalist.launcher.domain.modes.ActiveLock(com.minimalist.launcher.domain.modes.LockKind.PutAway, later)
+        assertTrue(evaluate("com.instagram.android", lock) is BlockDecision.Blocked)
+        assertEquals(BlockDecision.Allowed, evaluate("net.one97.paytm", lock, allowed = setOf("net.one97.paytm")))
+        assertEquals(BlockDecision.Allowed, evaluate("com.android.dialer", lock))
+    }
+
+    @Test
+    fun otherBrowsersAreBlockedWithNoEnd() {
+        val decision = evaluate("org.mozilla.firefox", null, browsers = setOf("org.mozilla.firefox"))
+        assertEquals(BlockReason.OtherBrowser("Chrome"), (decision as BlockDecision.Blocked).primary)
+        assertEquals(Long.MAX_VALUE, decision.untilMillis)
+        assertEquals(BlockDecision.Allowed, evaluate("com.android.chrome", null, browsers = setOf("org.mozilla.firefox")))
+    }
+}

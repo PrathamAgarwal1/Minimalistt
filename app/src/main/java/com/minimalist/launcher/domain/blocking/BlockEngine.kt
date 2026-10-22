@@ -1,5 +1,6 @@
 package com.minimalist.launcher.domain.blocking
 
+import com.minimalist.launcher.domain.modes.ActiveLock
 import java.time.Duration
 import java.time.ZonedDateTime
 
@@ -19,10 +20,19 @@ object BlockEngine {
         protectedPackages: Set<String>,
         scale: TimeScale,
         atOpen: Boolean,
+        lock: ActiveLock? = null,
+        lockAllowedPackages: Set<String> = emptySet(),
+        otherBrowsers: Set<String> = emptySet(),
+        allowedBrowserLabel: String = "",
     ): BlockDecision {
         if (packageName in protectedPackages) return BlockDecision.Allowed
         val nowMillis = now.toInstant().toEpochMilli()
         val reasons = mutableListOf<BlockReason>()
+
+        if (lock != null && lock.untilMillis > nowMillis && packageName !in lockAllowedPackages) {
+            reasons += BlockReason.Locked(lock.kind, lock.untilMillis)
+        }
+        if (packageName in otherBrowsers) reasons += BlockReason.OtherBrowser(allowedBrowserLabel)
 
         rules.blocks[packageName]?.takeIf { it > nowMillis }?.let { reasons += BlockReason.Timed(it) }
 

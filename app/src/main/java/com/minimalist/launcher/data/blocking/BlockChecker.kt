@@ -3,8 +3,17 @@ package com.minimalist.launcher.data.blocking
 import com.minimalist.launcher.domain.blocking.BlockDecision
 import com.minimalist.launcher.domain.blocking.BlockEngine
 import com.minimalist.launcher.domain.blocking.TimeScale
+import com.minimalist.launcher.domain.modes.ActiveLock
 import kotlinx.coroutines.flow.StateFlow
 import java.time.ZonedDateTime
+
+/** What, beyond per-app rules, limits the phone right now. */
+data class PhoneState(
+    val lock: ActiveLock? = null,
+    val lockAllowedPackages: Set<String> = emptySet(),
+    val otherBrowsers: Set<String> = emptySet(),
+    val allowedBrowserLabel: String = "",
+)
 
 /** The one place that answers "may this app be open right now?". */
 class BlockChecker(
@@ -12,12 +21,16 @@ class BlockChecker(
     private val usage: UsageTracker,
     private val protectedApps: ProtectedApps,
     private val timeScale: StateFlow<TimeScale>,
+    private val phoneState: () -> PhoneState,
+    private val hasPass: (String) -> Boolean,
 ) {
     fun isProtected(packageName: String) = packageName in protectedApps.packages
 
-    suspend fun check(packageName: String, atOpen: Boolean): BlockDecision {
-        if (isProtected(packageName)) return BlockDecision.Allowed
+    /** [includePhoneState] false asks about the app's own rules only, ignoring modes and browsers. */
+    suspend fun check(packageName: String, atOpen: Boolean, includePhoneState: Boolean = true): BlockDecision {
+        if (isProtected(packageName) || hasPass(packageName)) return BlockDecision.Allowed
         val now = ZonedDateTime.now()
+        val phone = if (includePhoneState) phoneState() else PhoneState()
         return BlockEngine.evaluate(
             packageName = packageName,
             now = now,
@@ -26,6 +39,10 @@ class BlockChecker(
             protectedPackages = protectedApps.packages,
             scale = timeScale.value,
             atOpen = atOpen,
+            lock = phone.lock,
+            lockAllowedPackages = phone.lockAllowedPackages,
+            otherBrowsers = phone.otherBrowsers,
+            allowedBrowserLabel = phone.allowedBrowserLabel,
         )
     }
 }

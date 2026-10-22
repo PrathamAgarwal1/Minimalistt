@@ -11,7 +11,10 @@ data class TimeScale(val testMode: Boolean) {
 
     fun block(duration: Duration): Duration = if (testMode) duration.dividedBy(3_600) else duration
 
-    fun dailyLimit(duration: Duration): Duration = if (testMode) duration.dividedBy(60) else duration
+    fun dailyLimit(duration: Duration): Duration = minutesAsSeconds(duration)
+
+    /** Sessions, Put away and morning mode: in test mode a minute lasts a second. */
+    fun minutesAsSeconds(duration: Duration): Duration = if (testMode) duration.dividedBy(60) else duration
 
     val cooldown: Duration get() = if (testMode) Duration.ofMinutes(1) else Duration.ofHours(24)
 
