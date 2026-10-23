@@ -31,8 +31,8 @@ data class ChallengePlan(
 
 object ChallengeRules {
 
-    const val EXTRA_PER_RECENT_UNLOCK = 2
-    const val MAX_EXTRA_FOR_WRONG = 10
+    const val EXTRA_PER_RECENT_UNLOCK = 1
+    const val MAX_EXTRA_FOR_WRONG = 3
     val PASS_MINUTES = listOf(5, 15, 30)
 
     private const val MINUTE = 60_000L
@@ -47,11 +47,11 @@ object ChallengeRules {
         if (scale.testMode) return ChallengePlan(easy = 1)
         val left = timeLeftMillis.coerceAtLeast(0)
         val base = when {
-            left < 30 * MINUTE -> ChallengePlan(easy = 3)
-            left < 2 * HOUR -> ChallengePlan(medium = 5)
-            left < 12 * HOUR -> ChallengePlan(medium = 5, hard = 3)
-            left < 3 * DAY -> ChallengePlan(hard = 12)
-            else -> ChallengePlan(hard = 15, passage = true)
+            left < 30 * MINUTE -> ChallengePlan(easy = 2)
+            left < 2 * HOUR -> ChallengePlan(easy = 3, medium = 1)
+            left < 12 * HOUR -> ChallengePlan(medium = 4)
+            left < 3 * DAY -> ChallengePlan(medium=5, hard=2)
+            else -> ChallengePlan(hard = 7)
         }
         return base.plus(EXTRA_PER_RECENT_UNLOCK * earlyUnlocksPastWeek.coerceAtLeast(0))
     }
@@ -138,11 +138,11 @@ object NightRules {
         }
         if (scale.testMode) return NightChallenge(ChallengePlan(easy = 1), passFor(sinceBedtime), opensMorning = false)
         val base = when {
-            sinceBedtime < 30 -> ChallengePlan(easy = 3)
-            sinceBedtime < 60 -> ChallengePlan(medium = 5)
-            sinceBedtime < 120 -> ChallengePlan(medium = 5, hard = 3)
-            sinceBedtime < 180 -> ChallengePlan(hard = 12)
-            else -> ChallengePlan(hard = 15, passage = true)
+            sinceBedtime < 30 -> ChallengePlan(easy = 2)
+            sinceBedtime < 60 -> ChallengePlan(easy=3, medium=1)
+            sinceBedtime < 120 -> ChallengePlan(medium =4)
+            sinceBedtime < 180 -> ChallengePlan(medium=5, hard=2)
+            else -> ChallengePlan(hard = 7)
         }
         return NightChallenge(
             plan = base.plus(ChallengeRules.EXTRA_PER_RECENT_UNLOCK * passesTonight.coerceAtLeast(0)),

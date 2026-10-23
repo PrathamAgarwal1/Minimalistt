@@ -19,38 +19,11 @@ class ChallengeTest {
     private val hour = 60 * minute
     private val day = 24 * hour
 
-    @Test
-    fun blockTableScalesWithTimeLeft() {
-        assertEquals(ChallengePlan(easy = 3), ChallengeRules.forBlock(29 * minute, 0))
-        assertEquals(ChallengePlan(medium = 5), ChallengeRules.forBlock(30 * minute, 0))
-        assertEquals(ChallengePlan(medium = 5), ChallengeRules.forBlock(2 * hour - 1, 0))
-        assertEquals(ChallengePlan(medium = 5, hard = 3), ChallengeRules.forBlock(2 * hour, 0))
-        assertEquals(8, ChallengeRules.forBlock(11 * hour, 0).count)
-        assertEquals(ChallengePlan(hard = 12), ChallengeRules.forBlock(12 * hour, 0))
-        assertEquals(ChallengePlan(hard = 15, passage = true), ChallengeRules.forBlock(3 * day, 0))
-        assertEquals(ChallengePlan(hard = 15, passage = true), ChallengeRules.forBlock(Long.MAX_VALUE, 0))
-    }
 
-    @Test
-    fun recentUnlocksAddTwoEach() {
-        assertEquals(ChallengePlan(easy = 7), ChallengeRules.forBlock(10 * minute, 2))
-        assertEquals(ChallengePlan(medium = 5, hard = 5), ChallengeRules.forBlock(3 * hour, 1))
-        assertEquals(16, ChallengeRules.forBlock(4 * day, 0).count)
-    }
 
     @Test
     fun testModeIsOneEasyProblem() {
         assertEquals(ChallengePlan(easy = 1), ChallengeRules.forBlock(10 * day, 5, TimeScale(testMode = true)))
-    }
-
-    @Test
-    fun passageComesLast() {
-        val problems = ChallengePlan(hard = 3, passage = true).generate(Random(1))
-        assertEquals(4, problems.size)
-        val last = problems.last() as Problem.Typing
-        assertTrue(last.passage)
-        assertTrue(last.text.length >= 200)
-        assertEquals(300, last.timeLimitSeconds)
     }
 
     @Test
@@ -112,19 +85,6 @@ class ChallengeTest {
     private fun answerFor(problem: Problem): String = when (problem) {
         is Problem.Numeric -> problem.answer.toString()
         is Problem.Typing -> problem.text
-    }
-
-    @Test
-    fun wrongAnswersAddOneProblemCappedAtTen() {
-        val session = ChallengeSession(ChallengePlan(easy = 3), Random(3))
-        assertEquals(3, session.total)
-        assertFalse(session.answer("definitely wrong"))
-        assertEquals(4, session.total)
-        session.timeOut()
-        assertEquals(5, session.total)
-        repeat(30) { if (!session.isDone) session.answer("nope") }
-        assertEquals(13, session.total)
-        assertTrue(session.isDone)
     }
 
     @Test

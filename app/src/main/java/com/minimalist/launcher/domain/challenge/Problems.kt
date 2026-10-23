@@ -44,18 +44,18 @@ object ProblemGenerator {
 
     fun multiplication(difficulty: Difficulty, random: Random): Problem {
         val (a, b) = when (difficulty) {
-            Difficulty.Easy -> random.nextInt(12, 100) to random.nextInt(3, 10)
-            Difficulty.Medium -> random.nextInt(13, 100) to random.nextInt(13, 100)
-            Difficulty.Hard -> random.nextInt(101, 1000) to random.nextInt(13, 100)
+            Difficulty.Easy -> random.nextInt(2, 12) to random.nextInt(2, 10)
+            Difficulty.Medium -> random.nextInt(12, 50) to random.nextInt(3, 12)
+            Difficulty.Hard -> random.nextInt(15, 99) to random.nextInt(11, 20)
         }
         return Problem.Numeric("$a × $b", a.toLong() * b, difficulty)
     }
 
     fun additionChain(difficulty: Difficulty, random: Random): Problem {
         val (count, range, subtract) = when (difficulty) {
-            Difficulty.Easy -> Triple(4, 10..99, false)
-            Difficulty.Medium -> Triple(6, 10..499, true)
-            Difficulty.Hard -> Triple(8, 100..999, true)
+            Difficulty.Easy -> Triple(3, 10..50, false)
+            Difficulty.Medium -> Triple(4, 10..99, true)
+            Difficulty.Hard -> Triple(5, 50..199, true)
         }
         var total = 0L
         val text = StringBuilder()
@@ -142,17 +142,17 @@ object ProblemGenerator {
 
     fun typing(difficulty: Difficulty, random: Random): Problem {
         val (length, alphabet) = when (difficulty) {
-            Difficulty.Easy -> 8 to LOWER
-            Difficulty.Medium -> 14 to LOWER + UPPER + DIGITS
-            Difficulty.Hard -> 20 to LOWER + UPPER + DIGITS + SYMBOLS
+            Difficulty.Easy -> 6 to LOWER
+            Difficulty.Medium -> 10 to LOWER + DIGITS
+            Difficulty.Hard -> 12 to LOWER + UPPER + DIGITS
         }
         return Problem.Typing((1..length).map { alphabet[random.nextInt(alphabet.length)] }.joinToString(""), difficulty)
     }
 
-    /** About 200 characters of random everyday words. */
+    /** About 50 characters of random everyday words. */
     fun passage(random: Random): Problem {
         val text = StringBuilder()
-        while (text.length < 200) {
+        while (text.length < 50) {
             if (text.isNotEmpty()) text.append(' ')
             text.append(WORDS[random.nextInt(WORDS.size)])
         }

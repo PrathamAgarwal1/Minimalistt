@@ -99,15 +99,22 @@ object DayModes {
      */
     fun activeLock(
         putAwayUntil: Long?,
+        putAwayReleasedUntil: Long?, // Added for Put Away pass
         nightReleasedUntil: Long?,
         config: DayModeConfig,
         now: ZonedDateTime,
     ): ActiveLock? {
         val nowMillis = now.toInstant().toEpochMilli()
-        putAwayUntil?.takeIf { it > nowMillis }?.let { return ActiveLock(LockKind.PutAway, it) }
+        
+        putAwayUntil?.takeIf { it > nowMillis }?.let { until ->
+            val isReleased = putAwayReleasedUntil != null && (putAwayReleasedUntil >= nowMillis || putAwayReleasedUntil == until)
+            if (!isReleased) return ActiveLock(LockKind.PutAway, until)
+        }
+        
         night(config, now)?.let { window ->
             val opens = window.opens.toInstant().toEpochMilli()
-            if (nightReleasedUntil != opens) return ActiveLock(LockKind.Night, opens)
+            val isReleased = nightReleasedUntil != null && nightReleasedUntil >= nowMillis
+            if (!isReleased) return ActiveLock(LockKind.Night, opens)
         }
         return null
     }
@@ -116,8 +123,10 @@ object DayModes {
     fun extendPutAway(currentUntil: Long?, nowMillis: Long, duration: Duration): Long =
         maxOf(currentUntil ?: 0L, nowMillis) + duration.toMillis()
 
-    private fun at(date: LocalDate, minuteOfDay: Int, zoneOf: ZonedDateTime) =
-        date.atStartOfDay(zoneOf.zone).plusMinutes(minuteOfDay.toLong())
+private fun at(date: LocalDate, minuteOfDay: Int, zoneOf: ZonedDateTime): ZonedDateTime {
+        val time = java.time.LocalTime.of(minuteOfDay / 60, minuteOfDay % 60)
+        return ZonedDateTime.of(date, time, zoneOf.zone)
+    }    
 }
 
 /** Study hours that start Put away by themselves. */
@@ -134,10 +143,13 @@ data class StudyWindow(val startMinute: Int, val endMinute: Int, val days: Set<D
         }
 
         fun decode(text: String?): List<StudyWindow> = text.orEmpty().split(';').mapNotNull { part ->
-            val numbers = part.split('-').mapNotNull { it.toIntOrNull() }
-            if (numbers.size != 3) return@mapNotNull null
-            val days = DayOfWeek.entries.filter { numbers[2] and (1 shl (it.value - 1)) != 0 }.toSet()
-            StudyWindow(numbers[0], numbers[1], days)
+            val parts = part.split('-')
+            if (parts.size != 3) return@mapNotNull null
+            val start = parts[0].toIntOrNull() ?: return@mapNotNull null
+            val end = parts[1].toIntOrNull() ?: return@mapNotNull null
+            val mask = parts[2].toIntOrNull() ?: return@mapNotNull null
+            val days = DayOfWeek.entries.filter { mask and (1 shl (it.value - 1)) != 0 }.toSet()
+            StudyWindow(start, end, days)
         }
     }
 }
@@ -145,6 +157,15 @@ data class StudyWindow(val startMinute: Int, val endMinute: Int, val days: Set<D
 object PickupRules {
 
     /** True when [threshold] or more unlocks happened in the hour before [nowMillis]. 0 means off. */
-    fun tooMany(pickupTimes: List<Long>, nowMillis: Long, threshold: Int): Boolean =
-        threshold > 0 && pickupTimes.count { it in (nowMillis - 3_600_000L + 1)..nowMillis } >= threshold
+    fun tooMany(pickupTimes: List<Long>, nowMillis: Long, threshold: Int): Boolean {
+        if (threshold <= 0) return false
+        val cutoff = nowMillis - 3_600_000L
+        var recentPickups = 0
+        for (i in pickupTimes.indices.reversed()) {
+            if (pickupTimes[i] <= cutoff) break
+            recentPickups++
+            if (recentPickups >= threshold) return true
+        }
+        return false
+    }
 }

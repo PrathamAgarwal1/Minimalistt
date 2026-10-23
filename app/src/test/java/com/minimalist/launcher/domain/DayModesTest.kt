@@ -86,21 +86,21 @@ class DayModesTest {
     fun putAwayBeatsNight() {
         val nightTime = at(22, 23, 30)
         val putAwayEnd = ms(nightTime.plusMinutes(30))
-        assertEquals(ActiveLock(LockKind.PutAway, putAwayEnd), DayModes.activeLock(putAwayEnd, null, config, nightTime))
-        assertEquals(ActiveLock(LockKind.Night, ms(at(23, 8))), DayModes.activeLock(null, null, config, nightTime))
+        assertEquals(ActiveLock(LockKind.PutAway, putAwayEnd), DayModes.activeLock(putAwayEnd, null, null, config, nightTime))
+        assertEquals(ActiveLock(LockKind.Night, ms(at(23, 8))), DayModes.activeLock(null, null, null, config, nightTime))
     }
 
     @Test
     fun aNightOpenedEarlyIsOver() {
         val opens = ms(at(23, 8))
-        assertNull(DayModes.activeLock(null, opens, config, at(23, 6, 30)))
+        assertNull(DayModes.activeLock(null, null, opens, config, at(23, 6, 30)))
         // Releasing last night doesn't release tonight.
-        assertEquals(LockKind.Night, DayModes.activeLock(null, opens, config, at(24, 1, 0))?.kind)
+        assertEquals(LockKind.Night, DayModes.activeLock(null, null, opens, config, at(24, 1, 0))?.kind)
     }
 
     @Test
     fun expiredPutAwayIsNoLock() {
-        assertNull(DayModes.activeLock(ms(at(22, 12)), null, config, at(22, 12, 1)))
+        assertNull(DayModes.activeLock(ms(at(22, 12)), null, null, config, at(22, 12, 1)))
     }
 
     @Test
@@ -113,7 +113,7 @@ class DayModesTest {
     private val minute = 60_000L
     private val hour = 60 * minute
 
-    @Test
+   @Test
     fun nightCurveGrowsWithHowLateItIs() {
         val longUntilOpening = 8 * hour
         fun night(sinceBedtime: Long, passes: Int = 0) = NightRules.challenge(sinceBedtime, longUntilOpening, passes, 0)
@@ -129,7 +129,7 @@ class DayModesTest {
         assertFalse(night(4 * hour).opensMorning)
     }
 
-    @Test
+   @Test
     fun passesTonightAddTwoEach() {
         assertEquals(ChallengePlan(easy = 7), NightRules.challenge(10 * minute, 8 * hour, 2, 0).plan)
     }

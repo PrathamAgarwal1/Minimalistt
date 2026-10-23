@@ -4,7 +4,7 @@ import java.time.Duration
 
 /**
  * Real durations, or the shrunken ones of debug test mode: hours become seconds (so a month
- * becomes 12 minutes), daily-limit minutes become seconds, and the 24-hour cooldown becomes
+ * becomes 12 minutes), daily-limit minutes become seconds, and the 2-hour cooldown becomes
  * one minute. Release builds always use [REAL].
  */
 data class TimeScale(val testMode: Boolean) {
@@ -19,7 +19,7 @@ data class TimeScale(val testMode: Boolean) {
     /** Unlock passes: in test mode a minute of pass lasts six seconds, so 5 minutes is 30 s. */
     fun pass(minutes: Int): Duration = if (testMode) Duration.ofSeconds(minutes * 6L) else Duration.ofMinutes(minutes.toLong())
 
-    val cooldown: Duration get() = if (testMode) Duration.ofMinutes(1) else Duration.ofHours(24)
+    val cooldown: Duration get() = if (testMode) Duration.ofMinutes(1) else Duration.ofHours(2)
 
     companion object {
         val REAL = TimeScale(testMode = false)

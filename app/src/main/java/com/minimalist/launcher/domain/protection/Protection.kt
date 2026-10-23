@@ -105,8 +105,8 @@ object Protection {
  */
 object EmergencyRules {
 
-    const val MINUTES = 15
-    const val FREE_PER_MONTH = 3
+    const val MINUTES = 45
+    const val FREE_PER_MONTH = 10
 
     fun usedThisPeriod(previousUnlocks: List<Long>, nowMillis: Long, zone: ZoneId, scale: TimeScale): Int {
         if (scale.testMode) return previousUnlocks.count { it > nowMillis - 3_600_000L }
@@ -120,6 +120,6 @@ object EmergencyRules {
     fun extraPlan(used: Int, scale: TimeScale): ChallengePlan {
         if (scale.testMode) return ChallengePlan(easy = 1)
         val extraAlready = (used - FREE_PER_MONTH).coerceAtLeast(0)
-        return ChallengePlan(hard = 15, passage = true).plus(2 * extraAlready)
+        return ChallengePlan(medium=3, hard=2).plus(2 * extraAlready)
     }
 }

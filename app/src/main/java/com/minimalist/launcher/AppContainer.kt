@@ -147,7 +147,7 @@ class AppContainer(context: Context) {
 
     fun currentLock(): ActiveLock? {
         val state = modes.state.value
-        return DayModes.activeLock(state.putAwayUntil, state.nightReleasedUntil, state.dayModes, TrustedClock.zonedNow())
+        return DayModes.activeLock(state.putAwayUntil, null, state.nightReleasedUntil, state.dayModes, TrustedClock.zonedNow())
     }
 
     /**
