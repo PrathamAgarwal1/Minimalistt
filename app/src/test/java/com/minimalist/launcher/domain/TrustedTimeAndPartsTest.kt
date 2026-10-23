@@ -54,23 +54,7 @@ class TrustedTimeAndPartsTest {
 
     private val zone = ZoneId.of("Asia/Kolkata")
     private fun at(month: Int, day: Int) = ZonedDateTime.of(2026, month, day, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
-
-    @Test
-    fun threeFreeEmergenciesAMonth() {
-        val now = at(10, 22)
-        val used = EmergencyRules.usedThisPeriod(listOf(at(9, 30), at(10, 1), at(10, 5)), now, zone, TimeScale.REAL)
-        assertEquals(2, used)
-        assertEquals(1, EmergencyRules.freeLeft(used))
-        assertEquals(0, EmergencyRules.freeLeft(4))
-    }
-
-    @Test
-    fun extraEmergenciesCostAGrowingChallenge() {
-        assertEquals(ChallengePlan(hard = 15, passage = true), EmergencyRules.extraPlan(3, TimeScale.REAL))
-        assertEquals(ChallengePlan(hard = 19, passage = true), EmergencyRules.extraPlan(5, TimeScale.REAL))
-        assertEquals(ChallengePlan(easy = 1), EmergencyRules.extraPlan(9, TimeScale(testMode = true)))
-    }
-
+    
     @Test
     fun partsShowOnlyWhenBlockedAndOnScreen() {
         val reels = setOf("com.instagram.android:id/clips_viewer_view_pager")

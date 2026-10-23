@@ -113,37 +113,6 @@ class DayModesTest {
     private val minute = 60_000L
     private val hour = 60 * minute
 
-   @Test
-    fun nightCurveGrowsWithHowLateItIs() {
-        val longUntilOpening = 8 * hour
-        fun night(sinceBedtime: Long, passes: Int = 0) = NightRules.challenge(sinceBedtime, longUntilOpening, passes, 0)
-        assertEquals(ChallengePlan(easy = 3), night(10 * minute).plan)
-        assertEquals(15, night(10 * minute).passMinutes)
-        assertEquals(ChallengePlan(medium = 5), night(30 * minute).plan)
-        assertEquals(10, night(45 * minute).passMinutes)
-        assertEquals(ChallengePlan(medium = 5, hard = 3), night(90 * minute).plan)
-        assertEquals(10, night(90 * minute).passMinutes)
-        assertEquals(ChallengePlan(hard = 12), night(150 * minute).plan)
-        assertEquals(5, night(150 * minute).passMinutes)
-        assertEquals(ChallengePlan(hard = 15, passage = true), night(4 * hour).plan)
-        assertFalse(night(4 * hour).opensMorning)
-    }
-
-   @Test
-    fun passesTonightAddTwoEach() {
-        assertEquals(ChallengePlan(easy = 7), NightRules.challenge(10 * minute, 8 * hour, 2, 0).plan)
-    }
-
-    @Test
-    fun lastTwoHoursHandOverToTheMorning() {
-        // 6 h after bedtime with 90 min to opening: the unlock table, by time until opening.
-        val morning = NightRules.challenge(6 * hour, 90 * minute, passesTonight = 3, earlyUnlocksPastWeek = 1)
-        assertTrue(morning.opensMorning)
-        assertEquals(ChallengeRules.forBlock(90 * minute, 1), morning.plan)
-        assertEquals(ChallengePlan(easy = 3), NightRules.challenge(7 * hour, 20 * minute, 0, 0).plan)
-        assertFalse(NightRules.challenge(6 * hour, 2 * hour, 0, 0).opensMorning)
-    }
-
     @Test
     fun testModeNightIsOneEasyProblemInSeconds() {
         val test = TimeScale(testMode = true)

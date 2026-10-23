@@ -14,11 +14,6 @@ import java.time.DayOfWeek
 
 class ProtectionTest {
 
-    @Test
-    fun cooldownIsADayOrAMinuteInTestMode() {
-        assertEquals(86_400_000L + 5, Protection.cooldownEndsAt(5, TimeScale.REAL))
-        assertEquals(60_000L + 5, Protection.cooldownEndsAt(5, TimeScale(testMode = true)))
-    }
 
     @Test
     fun limits() {

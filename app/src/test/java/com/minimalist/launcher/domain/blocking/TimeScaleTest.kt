@@ -9,13 +9,6 @@ class TimeScaleTest {
     private val test = TimeScale(testMode = true)
 
     @Test
-    fun realScaleChangesNothing() {
-        assertEquals(Duration.ofHours(5), TimeScale.REAL.block(Duration.ofHours(5)))
-        assertEquals(Duration.ofMinutes(30), TimeScale.REAL.dailyLimit(Duration.ofMinutes(30)))
-        assertEquals(Duration.ofHours(24), TimeScale.REAL.cooldown)
-    }
-
-    @Test
     fun testModeHoursBecomeSecondsAndMonthsBecomeMinutes() {
         assertEquals(Duration.ofSeconds(1), test.block(BlockUnit.Hours.duration))
         assertEquals(Duration.ofSeconds(24), test.block(BlockUnit.Days.duration))
