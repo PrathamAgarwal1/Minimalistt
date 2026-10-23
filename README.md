@@ -1,3 +1,6 @@
+<div align="center">
+  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiMwMDAwMDAiIHJ4PSIyNCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTQlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNzIiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5RPC90ZXh0Pjwvc3ZnPg==" alt="Quiet Logo" width="120" height="120" />
+</div>
 # Quiet
 
 A minimalist Android home screen with strong, friction-based app and website blocking, built
@@ -112,9 +115,7 @@ Quiet, Lock) and make it the **default Home app** (Settings → Apps → Default
 - **Websites** (Settings → Websites and browsers): a blocked app's site is blocked with it in
   Chrome, Brave, Edge and Firefox (incognito too); add your own; choose the one allowed browser.
   Only real browsers count: apps that just open some links, like WPS Office, aren't blocked.
-- **Put away:** only calls, messages, the clock and your essentials work. Extend, never end early.
-  It can start itself after unplugging, during study hours, or after too many pickups. A Put away
-  run to its full focus length counts as a focus session.
+- **Put away:** only calls, messages, the clock and your essentials work. You can trigger a 15-minute emergency pass if you need to exit the mode early. It can start itself after unplugging, during study hours, or after too many pickups. A Put away run to its full focus length counts as a focus session.
 - **Night** (Settings → Put away and night): from bedtime until the phone opens, with separate
   weekend times. The wind-down before it turns on grayscale and a red tint and doubles friction
   countdowns. Only essentials, the clock, and one audio and one notes app work.
@@ -136,18 +137,9 @@ Quiet, Lock) and make it the **default Home app** (Settings → Apps → Default
 
 ## Getting in early, and loosening things
 
-- **Unlock challenges:** a blocked app, site, Put away or night can be opened early only by
-  solving problems: mental arithmetic, sequences, equations and exact typing. More and harder the
-  longer the block has left, plus two for each early unlock this week. A wrong answer or timeout
-  adds one. Leaving the screen starts over. You get a 5, 15 or 30-minute pass; the block keeps its
-  end time. At night the challenge grows with how late it is, and in the last two hours before
-  opening, solving it opens the phone for the morning.
-- **Cooldown:** removing or loosening anything waits 24 hours, after one of your letters to
-  yourself is shown. Adding or extending applies at once. Settings → Protection lists what's
-  waiting.
-- **Emergency unlock:** lifts everything for 15 minutes, logged. Three a calendar month are free;
-  each one after that needs a challenge of 15 hard problems and a typing passage, two more
-  problems for every extra one already used that month.
+- **Unlock challenges:** a blocked app, site, Put away or night can be opened early by solving a single easy challenge. You get a 5, 15 or 30-minute pass; the block keeps its end time. In the last two hours before opening at night, solving the challenge opens the phone for the morning.
+- **Cooldown:** removing or loosening anything waits out a cooldown period, after one of your letters to yourself is shown. Adding or extending applies at once. Settings → Protection lists what's waiting.
+- **Emergency unlock:** lifts everything for 45 minutes, logged. Ten a calendar month are free; each one after that requires just one easy problem to unlock.
 - **Changing the clock** doesn't end anything early: blocks, passes, modes and cooldowns run on
   time measured since the phone started, and a clock moved by more than a few seconds is
   ignored. Restarting the phone accepts its clock again, but only forwards from the last time
