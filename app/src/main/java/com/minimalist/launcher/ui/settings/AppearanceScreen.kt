@@ -191,13 +191,13 @@ fun AppearanceScreen(onBack: () -> Unit) {
             Label("Settings screen wallpaper", style = Type.body)
             FlowRow {
                 Choice(
-                    label = if (hasSettingsWallpaper) "Change image" else "Choose image",
+                    text = if (hasSettingsWallpaper) "Change image" else "Choose image",
                     selected = false,
                     onClick = { settingsPicker.launch("image/*") },
                 )
                 if (hasSettingsWallpaper) {
                     Choice(
-                        label = "Remove",
+                        text = "Remove",
                         selected = false,
                         onClick = {
                             File(context.filesDir, SETTINGS_BG_FILENAME).delete()
@@ -212,13 +212,13 @@ fun AppearanceScreen(onBack: () -> Unit) {
             Label("Pop-up menu wallpaper", style = Type.body)
             FlowRow {
                 Choice(
-                    label = if (hasMenuWallpaper) "Change image" else "Choose image",
+                    text = if (hasMenuWallpaper) "Change image" else "Choose image",
                     selected = false,
                     onClick = { menuPicker.launch("image/*") },
                 )
                 if (hasMenuWallpaper) {
                     Choice(
-                        label = "Remove",
+                        text = "Remove",
                         selected = false,
                         onClick = {
                             File(context.filesDir, MENU_BG_FILENAME).delete()
