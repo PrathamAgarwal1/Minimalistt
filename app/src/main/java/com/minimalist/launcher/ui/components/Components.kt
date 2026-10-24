@@ -52,7 +52,7 @@ fun Screen(modifier: Modifier = Modifier, content: @Composable ColumnScope.() ->
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Palette.Background)
+            .background(Color.Transparent)
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = Spacing.gutter),
         content = content,
