@@ -24,6 +24,10 @@ data class Appearance(
     val centred: Boolean = true,
     /** Shown under the date: "screen", "alarm", "battery". */
     val glance: Set<String> = setOf("screen", "alarm"),
+    /** The color theme / palette: "oled", "charcoal", "catppuccin", "nord", "gruvbox", "solarized", "paper", "custom" */
+    val palette: String = "oled",
+    val customBackground: String = "#000000",
+    val customText: String = "#DCDCDC",
 )
 
 /** The favourites order shown on [epochDay]. */
@@ -41,6 +45,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val centred = booleanPreferencesKey("centred")
         val glance = stringSetPreferencesKey("glance")
         val setupDone = booleanPreferencesKey("setup_done")
+        val palette = stringPreferencesKey("palette")
+        val customBackground = stringPreferencesKey("custom_background")
+        val customText = stringPreferencesKey("custom_text")
     }
 
     /** Whether the first-run setup has been seen. */
@@ -58,6 +65,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             clockWeight = prefs[Keys.clockWeight] ?: defaults.clockWeight,
             centred = prefs[Keys.centred] ?: defaults.centred,
             glance = prefs[Keys.glance] ?: defaults.glance,
+            palette = prefs[Keys.palette] ?: defaults.palette,
+            customBackground = prefs[Keys.customBackground] ?: defaults.customBackground,
+            customText = prefs[Keys.customText] ?: defaults.customText,
         )
     }.distinctUntilChanged()
 
@@ -68,6 +78,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             it[Keys.clockWeight] = appearance.clockWeight
             it[Keys.centred] = appearance.centred
             it[Keys.glance] = appearance.glance
+            it[Keys.palette] = appearance.palette
+            it[Keys.customBackground] = appearance.customBackground
+            it[Keys.customText] = appearance.customText
         }
     }
 

@@ -1,8 +1,8 @@
 package com.minimalist.launcher.ui.home
 
+import android.content.Intent
+import android.net.Uri
 import android.text.format.DateFormat
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -31,14 +31,12 @@ import com.minimalist.launcher.domain.DurationFormat
 import com.minimalist.launcher.domain.LaunchableApp
 import com.minimalist.launcher.ui.appViewModel
 import com.minimalist.launcher.ui.components.Label
-import com.minimalist.launcher.ui.components.MENU_BG_FILENAME
 import com.minimalist.launcher.ui.components.OptionsDialog
 import com.minimalist.launcher.ui.components.Screen
 import com.minimalist.launcher.ui.components.TextAction
 import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Spacing
 import com.minimalist.launcher.ui.theme.Type
-import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -68,24 +66,12 @@ fun HomeScreen(
     var optionsFor by remember { mutableStateOf<LaunchableApp?>(null) }
     var quickMenu by remember { mutableStateOf(false) }
 
-    // ── Image picker for the menu wallpaper ──────────────────────
-    val imagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-    ) { uri ->
-        if (uri != null) {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                File(context.filesDir, MENU_BG_FILENAME).outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-        }
-    }
-
     val is24Hour = DateFormat.is24HourFormat(context)
     val timeFormat = remember(is24Hour) { DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm") }
     val dateFormat = remember { DateTimeFormatter.ofPattern("EEEE, d MMMM") }
 
     Screen(
+        settingsWallpaper = false,
         modifier = Modifier.pointerInput(Unit) {
             var dragged = 0f
             detectVerticalDragGestures(
@@ -161,7 +147,6 @@ fun HomeScreen(
                 "Stats" to onOpenStats,
                 "Settings" to onOpenSettings,
                 "Setup and status" to onOpenSetup,
-                "Set Menu Wallpaper" to { imagePicker.launch("image/*") },
             ),
             onDismiss = { quickMenu = false },
         )
@@ -175,7 +160,19 @@ fun HomeScreen(
                 "Remove from favourites" to { viewModel.removeFavourite(app) },
                 "Hide from search" to { viewModel.hide(app) },
                 "App info" to { viewModel.openAppInfo(app) },
-                "Uninstall" to { viewModel.uninstallApp(app) },
+                "Uninstall" to {
+                    runCatching {
+                        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}")).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    }.onFailure {
+                        val fallback = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.packageName}")).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        runCatching { context.startActivity(fallback) }
+                    }
+                },
             ),
             onDismiss = { optionsFor = null },
         )

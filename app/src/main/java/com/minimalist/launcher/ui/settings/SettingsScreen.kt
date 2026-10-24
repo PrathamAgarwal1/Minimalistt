@@ -78,7 +78,7 @@ fun SettingsScreen(
     }
     val now = TrustedClock.nowMillis()
 
-    Screen {
+    Screen(settingsWallpaper = true) {
         Spacer(Modifier.height(40.dp))
         ScreenTitle("Settings", onBack)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {

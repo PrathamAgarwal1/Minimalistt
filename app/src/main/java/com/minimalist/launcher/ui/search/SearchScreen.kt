@@ -1,5 +1,7 @@
 package com.minimalist.launcher.ui.search
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -61,6 +64,7 @@ fun SearchScreen(
     val notice by viewModel.notice.collectAsStateWithLifecycle()
     val favouriteKeys by viewModel.favouriteKeys.collectAsStateWithLifecycle()
     var optionsFor by remember { mutableStateOf<LaunchableApp?>(null) }
+    val context = LocalContext.current
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 
@@ -80,7 +84,7 @@ fun SearchScreen(
         onDone()
     }
 
-    Screen {
+    Screen(settingsWallpaper = false) {
         Spacer(Modifier.height(40.dp))
         InputField(
             value = query,
@@ -122,7 +126,19 @@ fun SearchScreen(
                 (if (isFavourite) "Remove from favourites" else "Add to favourites") to { viewModel.setFavourite(app, !isFavourite) },
                 "Hide from search" to { viewModel.hide(app) },
                 "App info" to { viewModel.openAppInfo(app) },
-                "Uninstall" to { viewModel.uninstallApp(app) },
+                "Uninstall" to {
+                    runCatching {
+                        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}")).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    }.onFailure {
+                        val fallback = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.packageName}")).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        runCatching { context.startActivity(fallback) }
+                    }
+                },
             ),
             onDismiss = { optionsFor = null },
         )

@@ -2,6 +2,7 @@ package com.minimalist.launcher.ui.components
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -27,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,17 +56,63 @@ import com.minimalist.launcher.ui.theme.Spacing
 import com.minimalist.launcher.ui.theme.Type
 import java.io.File
 
-/** Full-screen black surface that keeps content clear of bars, cutouts and the keyboard. */
+/** File name used for the custom menu background in pop-up dialogs. */
+const val MENU_BG_FILENAME = "custom_menu_bg.jpg"
+
+/** File name used for the custom settings screen wallpaper. */
+const val SETTINGS_BG_FILENAME = "custom_settings_bg.jpg"
+
+/** Incremented when a wallpaper is updated so Composable collectors reload immediately. */
+var menuWallpaperVersion by mutableIntStateOf(0)
+var settingsWallpaperVersion by mutableIntStateOf(0)
+
+/** Full-screen surface that keeps content clear of bars, cutouts and the keyboard. */
 @Composable
-fun Screen(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = modifier
+fun Screen(
+    modifier: Modifier = Modifier,
+    settingsWallpaper: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val context = LocalContext.current
+    val bgPainter = remember(settingsWallpaperVersion) {
+        if (settingsWallpaper) {
+            val file = File(context.filesDir, SETTINGS_BG_FILENAME)
+            if (file.exists()) {
+                val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                bitmap?.let { BitmapPainter(it.asImageBitmap()) }
+            } else null
+        } else null
+    }
+
+    Box(
+        modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(horizontal = Spacing.gutter),
-        content = content,
-    )
+            .then(
+                if (settingsWallpaper) Modifier.background(Palette.Background)
+                else Modifier.background(Color.Transparent)
+            ),
+    ) {
+        if (bgPainter != null) {
+            Image(
+                painter = bgPainter,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Palette.Overlay),
+            )
+        }
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = Spacing.gutter),
+            content = content,
+        )
+    }
 }
 
 @Composable
@@ -261,9 +309,6 @@ fun TextInputDialog(
     }
 }
 
-/** File name used for the custom menu background; shared with HomeScreen. */
-const val MENU_BG_FILENAME = "custom_menu_bg.jpg"
-
 /** A quiet list of choices over the current screen, optionally with a custom background image. */
 @Composable
 fun OptionsDialog(
@@ -274,7 +319,7 @@ fun OptionsDialog(
     val context = LocalContext.current
 
     // Attempt to load the custom background image from internal storage.
-    val bgPainter = remember {
+    val bgPainter = remember(menuWallpaperVersion) {
         val file = File(context.filesDir, MENU_BG_FILENAME)
         if (file.exists()) {
             val bitmap = BitmapFactory.decodeFile(file.absolutePath)
@@ -290,35 +335,50 @@ fun OptionsDialog(
     val cancelStyle = if (hasCustomBg) Type.small.copy(color = Palette.PrimaryText) else Type.small
 
     Dialog(onDismissRequest = onDismiss) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (bgPainter != null) {
-                        Modifier
-                            .paint(painter = bgPainter, contentScale = ContentScale.Crop)
-                            .background(Palette.Overlay)           // darken for readability
-                    } else {
-                        Modifier.background(Palette.Background)
-                    }
-                )
-                .border(1.dp, Palette.Line)
-                .padding(horizontal = Spacing.gutter, vertical = 20.dp),
+                .border(1.dp, Palette.Line),
         ) {
-            Label(title, style = titleStyle)
-            Spacer(Modifier.height(8.dp))
-            options.forEach { (label, action) ->
-                TextAction(
-                    text = label,
-                    onClick = {
-                        onDismiss()
-                        action()
-                    },
-                    style = itemStyle,
-                    modifier = Modifier.fillMaxWidth(),
+            if (bgPainter != null) {
+                Image(
+                    painter = bgPainter,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize(),
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Palette.Overlay),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Palette.DialogBackground),
                 )
             }
-            TextAction(text = "Cancel", onClick = onDismiss, style = cancelStyle, modifier = Modifier.fillMaxWidth())
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.gutter, vertical = 20.dp),
+            ) {
+                Label(title, style = titleStyle)
+                Spacer(Modifier.height(8.dp))
+                options.forEach { (label, action) ->
+                    TextAction(
+                        text = label,
+                        onClick = {
+                            onDismiss()
+                            action()
+                        },
+                        style = itemStyle,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                TextAction(text = "Cancel", onClick = onDismiss, style = cancelStyle, modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 }

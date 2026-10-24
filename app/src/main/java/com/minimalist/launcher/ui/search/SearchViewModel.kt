@@ -66,12 +66,4 @@ class SearchViewModel(container: AppContainer) : ViewModel() {
     fun hide(app: LaunchableApp) {
         viewModelScope.launch { apps.setHidden(app.key, app.packageName, true) }
     }
-
-    fun uninstallApp(app: LaunchableApp) {
-        val intent = android.content.Intent(
-            android.content.Intent.ACTION_DELETE,
-            android.net.Uri.parse("package:${app.packageName}"),
-        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        container.appContext.startActivity(intent)
-    }
 }

@@ -27,6 +27,9 @@
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Allows the launcher to prompt system package uninstallation (Android 9+). -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
     <!-- Package visibility: only apps with a launcher entry, no QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>
