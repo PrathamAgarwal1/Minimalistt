@@ -1,5 +1,6 @@
 package com.minimalist.launcher.ui.components
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,10 +32,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -45,6 +52,7 @@ import androidx.compose.ui.window.Dialog
 import com.minimalist.launcher.ui.theme.Palette
 import com.minimalist.launcher.ui.theme.Spacing
 import com.minimalist.launcher.ui.theme.Type
+import java.io.File
 
 /** Full-screen black surface that keeps content clear of bars, cutouts and the keyboard. */
 @Composable
@@ -253,22 +261,51 @@ fun TextInputDialog(
     }
 }
 
-/** A quiet list of choices over the current screen. */
+/** File name used for the custom menu background; shared with HomeScreen. */
+const val MENU_BG_FILENAME = "custom_menu_bg.jpg"
+
+/** A quiet list of choices over the current screen, optionally with a custom background image. */
 @Composable
 fun OptionsDialog(
     title: String,
     options: List<Pair<String, () -> Unit>>,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
+
+    // Attempt to load the custom background image from internal storage.
+    val bgPainter = remember {
+        val file = File(context.filesDir, MENU_BG_FILENAME)
+        if (file.exists()) {
+            val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+            bitmap?.let { BitmapPainter(it.asImageBitmap()) }
+        } else null
+    }
+
+    val hasCustomBg = bgPainter != null
+
+    // Text styles: force high-contrast white when a background image is active.
+    val titleStyle = if (hasCustomBg) Type.small.copy(color = Palette.PrimaryText) else Type.small
+    val itemStyle  = if (hasCustomBg) Type.body.copy(color = Palette.PrimaryText) else Type.body
+    val cancelStyle = if (hasCustomBg) Type.small.copy(color = Palette.PrimaryText) else Type.small
+
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Palette.Background)
+                .then(
+                    if (bgPainter != null) {
+                        Modifier
+                            .paint(painter = bgPainter, contentScale = ContentScale.Crop)
+                            .background(Palette.Overlay)           // darken for readability
+                    } else {
+                        Modifier.background(Palette.Background)
+                    }
+                )
                 .border(1.dp, Palette.Line)
                 .padding(horizontal = Spacing.gutter, vertical = 20.dp),
         ) {
-            Label(title, style = Type.small)
+            Label(title, style = titleStyle)
             Spacer(Modifier.height(8.dp))
             options.forEach { (label, action) ->
                 TextAction(
@@ -277,10 +314,11 @@ fun OptionsDialog(
                         onDismiss()
                         action()
                     },
+                    style = itemStyle,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            TextAction(text = "Cancel", onClick = onDismiss, style = Type.small, modifier = Modifier.fillMaxWidth())
+            TextAction(text = "Cancel", onClick = onDismiss, style = cancelStyle, modifier = Modifier.fillMaxWidth())
         }
     }
 }

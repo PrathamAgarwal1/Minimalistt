@@ -122,6 +122,7 @@ fun SearchScreen(
                 (if (isFavourite) "Remove from favourites" else "Add to favourites") to { viewModel.setFavourite(app, !isFavourite) },
                 "Hide from search" to { viewModel.hide(app) },
                 "App info" to { viewModel.openAppInfo(app) },
+                "Uninstall" to { viewModel.uninstallApp(app) },
             ),
             onDismiss = { optionsFor = null },
         )
