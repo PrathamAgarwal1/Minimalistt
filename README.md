@@ -89,8 +89,8 @@ Quiet, Lock) and make it the **default Home app** (Settings → Apps → Default
   left, e.g. "12m left"), and Put away, Search and Urgent message. There is no app drawer: swipe
   up or tap Search and type.
 - **Long-press** an app on the home screen or in search to block it, add it to favourites, hide
-  it, or open app info. Long-press the clock for a quick menu: block an app, Put away, Stats,
-  Settings, Setup and status.
+  it, open app info or uninstall it. Long-press the clock for a quick menu: block an app, Put away,
+  Stats, Settings, Setup and status, and Set Menu Wallpaper.
 - **Search** finds Quiet's own pages too (in the accent colour): type "block", "stats",
   "weekly", "night", "emergency" and so on.
 - **Settings** is grouped into Focus (blocking, websites, earned time), Modes (Put away, night,
@@ -134,7 +134,12 @@ Quiet, Lock) and make it the **default Home app** (Settings → Apps → Default
 - **Weekly review:** on Sunday from 18:00, once: this week's screen time against last week's, the
   best and worst day, urges resisted, Put away time and early unlocks, and the app you want most
   but enjoy least, with "Block it for a week". Also under Stats.
-- **Appearance:** text size, accent colour, clock weight, centred or left-aligned home.
+- **Appearance:** text size, accent colour, clock weight, centred or left-aligned home. Drop a
+  custom `.ttf` or `.otf` font into `app/src/main/res/font/` as `custom_font.ttf` and rebuild to
+  change every typeface. Swap the hex codes in `Palette` (in `Theme.kt`) to re-skin the entire
+  launcher (a Catppuccin Mocha example is in the comments).
+- **Menu wallpaper:** long-press the clock → Set Menu Wallpaper to pick an image from the gallery.
+  The options dialog shows it behind a dark overlay so text stays readable.
 
 ## Getting in early, and loosening things
 
